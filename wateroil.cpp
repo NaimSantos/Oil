@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 
+using VecDouble = std::vector<double>;
 //Function prototypes:
 double calc_krw(double Sw);
 double calc_kro(double Sw);
@@ -10,7 +11,7 @@ double calc_phi(double P);
 double calc_Bg(double P);
 double calc_Bw(double P);
 double calc_Bo(double P);
-void calc_C();
+void calc_C(int n, VecDouble& Cop, VecDouble& Cow, VecDouble& Cwp, VecDouble& Cww, const VecDouble& Bo1, const VecDouble& Bo2, const VecDouble& Bw1, const VecDouble& Bw2, const VecDouble& phi2, const VecDouble& Sw2);
 
 //Variáveis:
 int nx = 20;              //descrição
@@ -28,19 +29,19 @@ double viscw = 0.005;     //viscosidade da água
 double kro;               //permeabilidade relativa (óleo)
 double krg;               //permeabilidade relativa (gás)
 double krw;               //descrição
-double Ax;                //descrição
-double Lx = 4000.0;       //Dimensão no eixo x
 double phi = 0.20;        //descrição
 double cg;                //descrição
 double tmax = 100.0;      //descrição
 double tempo = 0.0;       //descrição
-double deltax;            //descrição
 double deltat = 0.05;     //descrição
 double alphac = 1.0;      //descrição
 double betac = 0.0000864; //fator de conversão
-double Vb;                //descrição
+double Lx = 4000.0;       //Dimensão no eixo x
 double Ly = 20.0;         //Dimensão no eixo y
 double Lz = 10.0;         //Dimensão no eixo z
+constexpr double Ax {Ly*Lz};                //descrição
+constexpr double deltax {Lx/nx};            //descrição
+constexpr double Vb {deltax*Ax};                //descrição
 double p_init = 25000.0;  //descrição
 double S_init = 0.2;      //descrição
 double erro1;             //descrição
@@ -52,11 +53,8 @@ double S_esq = 0.85;      //descrição
 double p_aux;             //descrição
 double T_sc = 293.15;     //descrição
 double p_sc = 101.325;    //descrição
-double der_1_Bg;          //descrição
-double T = 400.0;         //VERIFICAR!
-double phi_linha;         //descrição
-double um_Bo_linha;       //descrição
-double um_Bw_linha;       //descrição
+double T = 400.0;         //
+constexpr double der_1_Bg {T_sc/(p_sc*T)};  //descrição
 double p0 = 25000.0;      //descrição
 double Bo0 = 1.2;         //
 double Bw0 = 1.1;         //descrição
@@ -64,6 +62,9 @@ double co = 0.00000005;   //descrição
 double cw = 0.000000001;  //descrição
 double phi0 = 0.2;        //descrição
 double cphi = 0.00000001; //descrição
+constexpr double um_Bo_linha {Bo0/co};       //descrição
+constexpr double um_Bw_linha {Bo0/cw};       //descrição
+constexpr double phi_linha {phi0*cphi};      //descrição
 //Outras variáveis
 double Sor=0.15;          //Saturação do óleo ?
 double Sgc=0.1;           //Saturação do gás ?
@@ -76,39 +77,34 @@ double Swr=0.2;           //descrição
 double alpha=-0.01;       //descrição
 
 int main(int argc,char *argv[]){
-	//Variable evaluation:
-	Ax=Ly*Lz;
-	deltax=Lx/nx;
-	Vb=deltax*Ax;
-	der_1_Bg=T_sc/(p_sc*T);
 
 	//Vetores utilizados
-	std::vector<double> Cog (nx+2, 0.0);
-	std::vector<double> Cgp (nx+2, 0.0);
-	std::vector<double> Cop (nx+2, 0.0);
-	std::vector<double> Cwp (nx+2, 0.0);
-	std::vector<double> Cow (nx+2, 0.0);
-	std::vector<double> Cww (nx+2, 0.0);
-	std::vector<double> Sg1 (nx+2, 0.0);
-	std::vector<double> Sg2 (nx+2, 0.0);
-	std::vector<double> Sw1 (nx+2, S_init);
-	std::vector<double> Sw2 (nx+2, S_init);
-	std::vector<double> po1 (nx+2, p_init);
-	std::vector<double> po2 (nx+2, p_init);
-	std::vector<double> po3 (nx+2, p_init);
-	std::vector<double> Bg1 (nx+2, 0.0);
-	std::vector<double> Bg2 (nx+2, 0.0);
-	std::vector<double> Bw1 (nx+2, 0.0);
-	std::vector<double> Bw2 (nx+2, 0.0);
-	std::vector<double> Bo1 (nx+2, 0.0);
-	std::vector<double> Bo2 (nx+2, 0.0);
-	std::vector<double> phi1 (nx+2, 0.0);
-	std::vector<double> phi2 (nx+2, 0.0);
-	std::vector<double> Tg (nx+2, 0.0);
-	std::vector<double> To (nx+2, 0.0);
-	std::vector<double> Tw (nx+2, 0.0);
-	std::vector<double> qo (nx+2, 0.0);
-	std::vector<double> qw (nx+2, 0.0);
+	VecDouble Cog (nx+2, 0.0);
+	VecDouble Cgp (nx+2, 0.0);
+	VecDouble Cop (nx+2, 0.0);
+	VecDouble Cwp (nx+2, 0.0);
+	VecDouble Cow (nx+2, 0.0);
+	VecDouble Cww (nx+2, 0.0);
+	VecDouble Sg1 (nx+2, 0.0);
+	VecDouble Sg2 (nx+2, 0.0);
+	VecDouble Sw1 (nx+2, S_init);
+	VecDouble Sw2 (nx+2, S_init);
+	VecDouble po1 (nx+2, p_init);
+	VecDouble po2 (nx+2, p_init);
+	VecDouble po3 (nx+2, p_init);
+	VecDouble Bg1 (nx+2, 0.0);
+	VecDouble Bg2 (nx+2, 0.0);
+	VecDouble Bw1 (nx+2, 0.0);
+	VecDouble Bw2 (nx+2, 0.0);
+	VecDouble Bo1 (nx+2, 0.0);
+	VecDouble Bo2 (nx+2, 0.0);
+	VecDouble phi1 (nx+2, 0.0);
+	VecDouble phi2 (nx+2, 0.0);
+	VecDouble Tg (nx+2, 0.0);
+	VecDouble To (nx+2, 0.0);
+	VecDouble Tw (nx+2, 0.0);
+	VecDouble qo (nx+2, 0.0);
+	VecDouble qw (nx+2, 0.0);
 	//Verificar as saturações em 0, 1 e nx
 	//Verificar po's em 0
 
@@ -134,7 +130,7 @@ int main(int argc,char *argv[]){
 				Bo2[n]=calc_Bo(po2[n]);
 				Bw2[n]=calc_Bw(po2[n]);
 				phi2[n]=calc_phi(po2[n]);
-				calc_C();
+				calc_C(n,Cop,Cow,Cwp,Cww,Bo1,Bo2,Bw1,Bw2,phi2,Sw2);
 			}
 			//printf("here 3\n");
 			i=0;
@@ -260,10 +256,7 @@ double calc_Bo(double P){
 double calc_phi(double P){
 	return phi0*(1.0+(cphi*(P-p0)));
 }
-void calc_C(){
-	phi_linha=phi0*cphi;
-	um_Bo_linha=Bo0/co;
-	um_Bw_linha=Bo0/cw;
+void calc_C(int n, VecDouble& Cop, VecDouble& Cow, VecDouble& Cwp, VecDouble& Cww, const VecDouble& Bo1, const VecDouble& Bo2, const VecDouble& Bw1, const VecDouble& Bw2, const VecDouble& phi2, const VecDouble& Sw2){
 	Cop[n]=(Vb/(alphac*deltat))*((phi_linha/Bo1[n])+(phi2[n]*um_Bo_linha))*(1.0-Sw2[n]);
 	Cow[n]=-(Vb/(alphac*deltat))*(phi2[n]/Bo2[n]); 
 	Cwp[n]=(Vb/(alphac*deltat))*((phi_linha/Bw1[n])+(phi2[n]*um_Bw_linha))*(Sw2[n]); 
