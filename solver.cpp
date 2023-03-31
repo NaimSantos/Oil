@@ -29,8 +29,10 @@ Vec1D To(dados.nx+1, 0.0);               // Transmissibilidade
 Vec1D Tw(dados.nx+1, 0.0);               // Transmissibilidade
 
 int main(int argc, char *argv[] ){
+	std::cout << "Inicio da simulacao" << std::endl;
 	//Inicia o registro do tempo:
 	CustomTimer Cronometro;
+	
 	//Leitura das váriaveis a partir de um arquivo de entrada:
 	auto input_meio=read_input_fluid_rock("entrada_rocha_fluido.txt");
 	auto input_simulacao=read_input_domain("entrada_simulacao.txt");
@@ -53,7 +55,9 @@ int main(int argc, char *argv[] ){
 		solucao_implicita();
 
 	*/
-	std::cout << dados.p_E << std::endl;
+
+	save_full_data(p,"Pressao");
+	save_full_data(Sw,"Saturacao");
 	std::cout << "Fim da simulacao" << std::endl;
 	return 0;
 }
@@ -170,14 +174,14 @@ double dB(double bo, double bo0, double P, double P0){
 	return ret;
 }
 void solucao_explicita(){
-	std::cout << "Linearizacao Explicita" << std::endl;
-	
+	std::cout << "Solucao via Linearizacao Explicita" << std::endl;
+	auto nx=dados.nx;
 	double time {0.0}, res {0.0}, resp {0.0};
 	int iter = 0;
 	update(Bo, Bo_old);
 	while (time < dados.tempo_max){
 		res = 1.0;
-		iter =0;
+		iter = 0;
 		rel_perm();
 		Transmissibilidade();
 		while (res > dados.tolerancia){
@@ -186,7 +190,15 @@ void solucao_explicita(){
 			solver_system();
 			oil_prop(Bo, p);
 			rel_diff(RESp, p, p_it);
+			res = max_vetor(RESp);
+			update(p_it ,p);
+			iter++;
 		}
+		solver_s();
+		time += dados.dt;
+		update(Bo_old,Bo);
+		update(p_old,p);
+		update(Sw_old,Sw);
 	}
 }
 
@@ -220,8 +232,15 @@ void solver_system(){
 		p[i] = (D[i] - E[i]*p[i+1])/M[i];
 	}
 }
-
-
+/// Solucao explicita da saturacao da agua
+void solver_s(){
+	auto nx=dados.nx;
+	Sw[0] = Sw_old[0] + (1.0/Cww[0]) * ( Tw[1]*(p[1] - p[0]) + Tw[0]*(dados.p_W - p[0]));
+	for(int i = 1; i < nx-1; i++){
+		Sw[i] = Sw_old[i] + (1.0/Cww[i]) * ( Tw[i+1]*(p[i+1] - p[i]) + Tw[i]*(p[i-1] - p[i]) );
+	}
+	Sw[nx-1] = Sw_old[nx-1] + (1.0/Cww[nx-1]) * ( Tw[nx]*(dados.p_E - p[nx-1]) + Tw[nx-1]*(p[nx-2] - p[nx-1]));
+}
 
 RockFluidProperties read_input_fluid_rock(std::string filename){
 	RockFluidProperties  dados_entrada;
@@ -306,6 +325,22 @@ SimulationProperties read_input_domain(std::string filename){
 	}
 	return dados_entrada;
 }
+
+void save_full_data(const Vec1D& Vetor, std::string variavel){
+	static int a {1};
+	std::string init {"output_"};
+	std::string filename = init + variavel + std::to_string(a) + ".txt";
+	std::fstream saver{filename, std::ios::out|std::ios::trunc};
+
+	saver << std::setw(5) << "x (m) " << std::setw(8) << variavel << std::endl;
+	const auto N = Vetor.size();
+	auto dx = dados.dx;
+	for (int i = 0; i < N; i++){
+		saver << std::fixed << std::setprecision(3) << (dx+dx*i) << " " << Vetor[i] << std::endl;
+	}
+	a++;
+}
+
 void resize_if_needed(int n){
 	W.resize(n,0.0);
 	M.resize(n,0.0);

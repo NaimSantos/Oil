@@ -2,10 +2,11 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <sstream>  //std::istringstream
+#include <sstream>   //std::istringstream
 #include <fstream>    // std::ifstream
 #include <cmath>      // std::fabs, std::pow
 #include <algorithm>  // std::min, std::max, std::max_element
+#include <iomanip>    // std::setw
 #include <chrono>     // registro de tempo
 
 //Structs usados para armazenar as propriedades do meio e do dominio da simulacao
@@ -42,28 +43,28 @@ struct SimulationProperties{
 };
 
 struct DadosTotais{
-	double tempo_max {100.0};  // Tempo máximo de simulação (dias)
+	double tempo_max {5000.0}; // Tempo máximo de simulação (dias)
 	double dt {0.5};           // tamanho do passo de tempo (dias)
-	double Lx {150};           // Dimensão do reservatório (m)
-	int nx {100};              // número de células (adimensional)
-	int sim_type {1};          // tipo de simulação (adimensional)
-	double tolerancia {0.001}; // tolerância
+	double Lx {1000};          // Dimensão do reservatório (m)
+	int nx {400};              // número de células (adimensional)
+	int sim_type {0};          // tipo de simulação (adimensional)
+	double tolerancia {1e-8};  // tolerância
 	double dx {0.1};           // dimensão do discretização (m)
-	double p_0 {0.1};          // pressão inicial (Pa)
-	double p_W {0.1};          // pressão no contorno esquerdo (Pa)
-	double p_E {0.1};          // pressão no contorno direito (Pa)
-	double Sw_0 {0.1};         // Saturação inicial (adimensional)
-	double Sw_W {0.1};         // Saturação no contorno esquerdo (adimensional)
-	double phi {0.1};          // porosidade da rocha (adimensional)
-	double k {1000};           // permeabilidade da rocha (unidade)
-	double siw {0.1};          // 
-	double sor {0.1};          // 
+	double p_0 {15000};        // pressão inicial (Pa)
+	double p_W {25000};        // pressão no contorno esquerdo (Pa)
+	double p_E {15000};        // pressão no contorno direito (Pa)
+	double Sw_0 {0.2};         // Saturação inicial (adimensional)
+	double Sw_W {1.0};         // Saturação no contorno esquerdo (adimensional)
+	double phi {0.20};         // porosidade da rocha (adimensional)
+	double k {0.030};          // permeabilidade da rocha (unidade)
+	double siw {0.15};         // saturação irredutivel agua
+	double sor {0.10};         // saturação irredutivel oleo
 	double rhowsc {1000.0};    // massa específica (kg/m^3)
-	double rhow {1000.0};      // massa específica (kg/m^3)
-	double muw {1000.0};       // 
-	double Boref {1000};       // Fator Volume Formação (?)
-	double co {10};            // 
-	double muo {50};           // 
+	double rhow {990};         // massa específica (kg/m^3)
+	double muw {1000.0};       // viscosidade da agua
+	double Boref {1.4};        // Fator Volume Formação (?)
+	double co {1e-6};          // compressibilidade
+	double muo {50};           // Viscosidade do oleo
 	double pref {50};          //
 	double Bw {50};            //
 };
@@ -104,8 +105,11 @@ void simulador_exp();
 void solucao_implicita();
 void fill_matrix();
 void solver_system();
-void resize_vectors();
+void resize_if_needed(int n);
+void save_full_data(const Vec1D& X, std::string variavel);
+void solver_s();
 
+//Registro do tempo:
 using milisegundos = std::chrono::milliseconds;
 using SteadyTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
 
