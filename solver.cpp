@@ -293,30 +293,6 @@ DadosTotais read_input_data(std::string filename){
 	return dados_entrada;
 }
 
-void print_simulation_properties(){
-	std::cout << "Parametros e propriedades utilizadas na simulacao: \n\n";
-	std::cout << "Comprimento do dominio: " << dados.Lx << " (m)\n";
-	std::cout << "Numero de celulas: " << dados.nx << "\n";
-	std::cout << "Dimensao da celulas: " << dados.dx << " (m)\n";
-	std::cout << "Tempo total simulado: " << dados.tempo_max << " (dias)\n";
-	std::cout << "Passo de tempo: " << dados.dt << " (dias)\n";
-	std::cout << "Viscosidade do oleo: " << dados.muo << "\n";
-	std::cout << "Compressibiliade do oleo: " << dados.co << "\n";
-	std::cout << "B_ref: " << dados.Boref << "\n";
-	std::cout << "Viscosidade da agua: " << dados.muw << "\n";
-	std::cout << "Densidade (sc): " << dados.rhowsc << "\n";
-	std::cout << "Densidade (w): " << dados.rhow << "\n";
-	std::cout << "Porosidade do meio " << dados.phi << "\n";
-	std::cout << "Permeabilidade do meio " << dados.k << "\n";
-	std::cout << "Saturacao irredutivel (siw) " << dados.siw << "\n";
-	std::cout << "Saturacao irredutivel (sor) " << dados.sor << "\n\n";
-	std::cout << "Condicoes iniciais e de contorno: \n\n";
-	std::cout << "Pressao inicial: " << dados.p_0 << "\n";
-	std::cout << "Pressao no contorno esquerdo: " << dados.p_W << "\n";
-	std::cout << "Pressao no contorno direito: " << dados.p_E << "\n";
-	std::cout << "Saturacao inicial: " << dados.Sw_0 << "\n";
-	std::cout << "Saturacao no contorno esquerdo: " << dados.Sw_W << "\n";
-}
 void save_full_data(const Vec1D& Vetor, std::string variavel){
 	static int a {1};
 	std::string init {"output_"};
@@ -333,6 +309,7 @@ void save_full_data(const Vec1D& Vetor, std::string variavel){
 }
 
 void resize_if_needed(int n){
+	//Se os vetores criados não sao suficientes, redimensionar para o novo tamanho:
 	W.resize(n,0.0);
 	M.resize(n,0.0);
 	E.resize(n,0.0);
@@ -354,4 +331,30 @@ void resize_if_needed(int n){
 	Bo_old.resize(n,0.0);
 	To.resize(n+1,0.0);
 	Tw.resize(n+1,0.0);
+}
+
+
+void print_simulation_properties(){
+	std::cout << "\nParametros e propriedades utilizadas na simulacao: \n";
+	std::cout << "Comprimento do dominio: " << dados.Lx << " (m)\n";
+	std::cout << "Numero de celulas: " << dados.nx << "\n";
+	std::cout << "Dimensao da celulas: " << dados.dx << " (m)\n";
+	std::cout << "Tempo total simulado: " << dados.tempo_max << " (dias)\n";
+	std::cout << "Passo de tempo: " << dados.dt << " (dias)\n";
+	std::cout << "Viscosidade do oleo: " << dados.muo << "\n";
+	std::cout << "Compressibiliade do oleo: " << dados.co << "\n";
+	std::cout << "B_ref: " << dados.Boref << "\n";
+	std::cout << "Viscosidade da agua: " << dados.muw << "\n";
+	std::cout << "Densidade (sc): " << dados.rhowsc << "\n";
+	std::cout << "Densidade (w): " << dados.rhow << "\n";
+	std::cout << "Porosidade do meio " << dados.phi << "\n";
+	std::cout << "Permeabilidade do meio " << dados.k << "\n";
+	std::cout << "Saturacao irredutivel (siw) " << dados.siw << "\n";
+	std::cout << "Saturacao irredutivel (sor) " << dados.sor << "\n\n";
+	std::cout << "Condicoes iniciais e de contorno: \n";
+	std::cout << "Pressao inicial: " << dados.p_0 << "\n";
+	std::cout << "Pressao no contorno esquerdo: " << dados.p_W << "\n";
+	std::cout << "Pressao no contorno direito: " << dados.p_E << "\n";
+	std::cout << "Saturacao inicial: " << dados.Sw_0 << "\n";
+	std::cout << "Saturacao no contorno esquerdo: " << dados.Sw_W << "\n";
 }

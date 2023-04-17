@@ -39,25 +39,16 @@ struct DadosTotais{
 //Define o tipo "Vec1D"
 using Vec1D = std::vector<double>;
 
-//Atualiza um vetor V0 com os valores the um outro vetor V
-void update(Vec1D& V0, const Vec1D& V);
-
-//Atualiza um vetor "diff" com a diferença relativa entre os pares de dois vetores V e V0
-void rel_diff(Vec1D& dif, const Vec1D& V, const Vec1D& V0);
-
-//Atualiza um vetor "diff" com a diferença absoluta entre os pares de dois vetores V e V0
-void abs_diff(Vec1D& dif, const Vec1D& V, double *V0);
+void update(Vec1D& V0, const Vec1D& V); //Atualiza um vetor V0 com os valores the um outro vetor V
+void rel_diff(Vec1D& dif, const Vec1D& V, const Vec1D& V0); //Atualiza um vetor "diff" com a diferença relativa entre os pares de dois vetores V e V0
+void abs_diff(Vec1D& dif, const Vec1D& V, double *V0); //Atualiza um vetor "diff" com a diferença absoluta entre os pares de dois vetores V e V0
 double max_vetor(Vec1D& V);
 void acumulo();
 double evaluate_dB(double bo, double bo0, double P, double P0);
-
-//Preenche um vetor "B" com os valores do fator volume formação para cada pressão em P
-void oil_prop(Vec1D& B, const Vec1D& P);
+void oil_prop(Vec1D& B, const Vec1D& P);//Preenche um vetor "B" com os valores do fator volume formação para cada pressão em P
 double calc_Bo(const double P);
 void rel_perm();
-
-// Modelo de Corey para permeabilidade relativa óleo/água
-double calc_kro(double sw);
+double calc_kro(double sw); // Modelo de Corey para permeabilidade relativa óleo/água
 double calc_krw(double sw);
 int upwind(double pesq, double pdir);
 void Transmissibilidade();
@@ -73,14 +64,13 @@ void save_full_data(const Vec1D& X, std::string variavel);
 void solver_s();
 void print_simulation_properties();
 DadosTotais read_input_data(std::string filename);
+
 //Registro do tempo:
 using milisegundos = std::chrono::milliseconds;
 using SteadyTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
-
-class CustomTimer
-{
+class CustomTimer{
 	private:
-			SteadyTimePoint startpoint;
+		SteadyTimePoint startpoint;
 	public:
 		CustomTimer(){
 			startpoint = std::chrono::steady_clock::now();
@@ -90,7 +80,6 @@ class CustomTimer
 			auto start = std::chrono::time_point_cast<milisegundos>(startpoint).time_since_epoch().count();
 			auto end = std::chrono::time_point_cast<milisegundos>(endpoint).time_since_epoch().count();
 			auto total = end - start;
-
 			std::cout << "\nTempo decorrido: " << total << " millisegundos" << std::endl;
 		}
 };
