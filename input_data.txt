@@ -1,0 +1,29 @@
+Propriedades_de_rocha_fluido:
+Porosidade_phi:           0.20
+Permeabilidade_k:         0.030
+Sw_irred:                 0.15
+So_res:                   0.10
+
+Propriedades_agua:
+Densidade_superficie_sc:   1000
+Densidade_reservatorio:    990
+Viscosidade_muw:           0.5
+
+Propriedade_oleo:
+B_referencia_Bref:        1.4
+Compressibilidade:        1.05E-6
+Viscosidade:              2
+
+Dados_de_simulacao:
+Tempo_de_simulacao:       5000
+Passo_de_tempo_dt:        0.5
+Comprimento_Lx:           1000
+Numero_de_cels_nx:        400
+tolerancia_tol:           1E-8
+
+Condições_iniciais_contorno:
+Pressao_inicial:          15000
+Pressao_esquerda:         25000
+Pressao_direita:          15000
+Sw_inicial:               0.20
+Sw_esquerda:              1.0

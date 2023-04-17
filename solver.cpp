@@ -2,7 +2,6 @@
 #include "prototypes.h"
 
 //Váriáveis da simulação
-
 DadosTotais dados;
 //Inicialização dos vetores utilizados no processo de resolução numérica:
 Vec1D W(dados.nx, 0.0);                 // n elementos, inicializados em 0
@@ -34,33 +33,30 @@ int main(int argc, char *argv[] ){
 	CustomTimer Cronometro;
 	
 	//Leitura das váriaveis a partir de um arquivo de entrada:
-	auto input_meio=read_input_fluid_rock("entrada_rocha_fluido.txt");
-	auto input_simulacao=read_input_domain("entrada_simulacao.txt");
+	dados=read_input_data("input_data.txt");
 	auto n=dados.nx;
-	//Atualização de variáveis a partir dos dados de entrada:
+
+	//Definicão de variáveis calculadas a partir dos dados de entrada:
 	resize_if_needed(n);
 	dados.Bw = dados.rhowsc/dados.rhow;
 	dados.dx = dados.Lx/n;
 	dados.pref = dados.p_0;
 
+	//Exibição das informações do problema:
+	print_simulation_properties();
 
 	// Atualizar o fator volume formação:
 	oil_prop(Bo_old,p);
+	//Invoca o simulador:
+	solucao_explicita();
 
-	//Invoca o simulador na configuração desejada:
-	if (dados.sim_type==0)
-		solucao_explicita();
-	/*
-		if (dados.sim_type==1)
-		solucao_implicita();
-
-	*/
-
+	//Salva os dados:
 	save_full_data(p,"Pressao");
 	save_full_data(Sw,"Saturacao");
 	std::cout << "Fim da simulacao" << std::endl;
 	return 0;
 }
+
 void update(Vec1D& V0, const Vec1D& V){
 	const auto n = V0.size();
 	for(int i = 0; i < n; i++){
@@ -84,6 +80,7 @@ void abs_diff(Vec1D& dif, const Vec1D& V, double *V0){
 double max_vetor(Vec1D& V){
 	return *std::max_element(V.begin(), V.end());
 }
+
 void acumulo(){
 	const auto v = dados.phi/dados.dt;
 	double bl {1.0};
@@ -94,6 +91,7 @@ void acumulo(){
 		Cww[i] = v/dados.Bw;
 	}
 }
+
 double evaluate_dB(double bo, double bo0, double P, double P0){
 	double ret {0.0};
 	if(std::fabs(P - P0) < dados.tolerancia)
@@ -165,6 +163,7 @@ void Transmissibilidade(){
 	To[dados.nx] = 2*Go*(kroud/Bomed);
 	Tw[dados.nx] = 2*Gw*krwud;
 }
+
 double dB(double bo, double bo0, double P, double P0){
 	double ret {0.0};
 	if(std::fabs(P - P0) < dados.tolerancia)
@@ -173,13 +172,13 @@ double dB(double bo, double bo0, double P, double P0){
 		ret = ((1/bo)-(1/bo0))/(P-P0);
 	return ret;
 }
+
 void solucao_explicita(){
-	std::cout << "Solucao via Linearizacao Explicita" << std::endl;
 	auto nx=dados.nx;
-	double time {0.0}, res {0.0}, resp {0.0};
+	double current_time {0.0}, res {0.0}, resp {0.0};
 	int iter = 0;
 	update(Bo, Bo_old);
-	while (time < dados.tempo_max){
+	while (current_time < dados.tempo_max){
 		res = 1.0;
 		iter = 0;
 		rel_perm();
@@ -195,7 +194,7 @@ void solucao_explicita(){
 			iter++;
 		}
 		solver_s();
-		time += dados.dt;
+		current_time += dados.dt;
 		update(Bo_old,Bo);
 		update(p_old,p);
 		update(Sw_old,Sw);
@@ -232,7 +231,7 @@ void solver_system(){
 		p[i] = (D[i] - E[i]*p[i+1])/M[i];
 	}
 }
-/// Solucao explicita da saturacao da agua
+
 void solver_s(){
 	auto nx=dados.nx;
 	Sw[0] = Sw_old[0] + (1.0/Cww[0]) * ( Tw[1]*(p[1] - p[0]) + Tw[0]*(dados.p_W - p[0]));
@@ -242,12 +241,11 @@ void solver_s(){
 	Sw[nx-1] = Sw_old[nx-1] + (1.0/Cww[nx-1]) * ( Tw[nx]*(dados.p_E - p[nx-1]) + Tw[nx-1]*(p[nx-2] - p[nx-1]));
 }
 
-RockFluidProperties read_input_fluid_rock(std::string filename){
-	RockFluidProperties  dados_entrada;
+DadosTotais read_input_data(std::string filename){
+	DadosTotais dados_entrada;
 	//Nome do arquivo de entrada
 	std::ifstream input_file {filename};
 	if (input_file.is_open()){
-		double temp_var {0.0};
 		std::vector<double> Dados;
 		for (std::string linha; std::getline(input_file, linha, '\n');){
 			std::istringstream current(linha);
@@ -263,61 +261,30 @@ RockFluidProperties read_input_fluid_rock(std::string filename){
 			}
 		}
 		input_file.close();
-		//Preenche o objeto dados_entrada com as informações armazenadas em Dados:
-		if (Dados.size() < 10)
-			std::cerr << "Arquivo de entrada com as com propriedade de fluido e rocha contem menos que 10 informacoes";
-			dados_entrada.porosidade_rocha=Dados[0];
-			dados_entrada.permeabilidade_rocha=Dados[1];
-			dados_entrada.saturacao_agua=Dados[2];
-			dados_entrada.saturacao_oleo=Dados[3];
-			dados_entrada.densidade_superficie_sc=Dados[4];
-			dados_entrada.densidade_reservatorio=Dados[5];
-			dados_entrada.viscosidade_muw=Dados[6];
-			dados_entrada.b_referencia=Dados[7];
-			dados_entrada.compressibilidade=Dados[8];
-			dados_entrada.viscosidade=Dados[9];
-	}
-	else{
-		std::cerr << "Nao foi possivel encontrar o arquivo " << filename;
-		std::exit(1);
-	}
-	return dados_entrada;
-}
-SimulationProperties read_input_domain(std::string filename){
-	SimulationProperties dados_entrada;
-	//Nome do arquivo de entrada
-	std::ifstream input_file {filename};
-	if (input_file.is_open()){
-		double temp_var {0.0};
-		std::vector<double> Dados;
-		for (std::string linha; std::getline(input_file, linha, '\n');){
-			std::istringstream current(linha);
-			std::string item;
-			// Leitura do stream, separados por espacos, um a um:
-			while(current >> item){
-				double x;
-				// Isto é um double?
-				if(std::istringstream(item) >> x){
-					// Use x e coloque no vetor:
-					Dados.push_back(x);
-				}
-			}
+		//Preenche o objeto dados_entrada com as informações armazenadas no vetor Dados:
+		if (Dados.size() < 20){
+			std::cerr << "Arquivo de entrada nao contem todas as informacoes";
 		}
-		input_file.close();
-		//Preenche o objeto dados_entrada com as informações armazenadas em Dados:
-		if (Dados.size() < 10)
-			std::cerr << "Arquivo de com as informacoes do dominio contem menos que 11 informacoes";
-			dados_entrada.tempo_simulado=static_cast<int>(Dados[0]);
-			dados_entrada.passo_de_tempo=Dados[1];
-			dados_entrada.comprimento_x=Dados[2];
-			dados_entrada.numero_de_celulas=static_cast<int>(Dados[3]);
-			dados_entrada.tolerancia_tol=Dados[4];
-			dados_entrada.pressao_inicial=Dados[5];
-			dados_entrada.pressao_esquerda=Dados[6];
-			dados_entrada.pressao_direita=Dados[7];
-			dados_entrada.saturacaow_inicial=Dados[8];
-			dados_entrada.saturacaow_esquerda=Dados[9];
-			dados_entrada.linearizacao=static_cast<int>(Dados[10]);
+		dados_entrada.phi=Dados[0];
+		dados_entrada.k=Dados[1];
+		dados_entrada.siw=Dados[2];
+		dados_entrada.sor=Dados[3];
+		dados_entrada.rhowsc=Dados[4];
+		dados_entrada.rhow=Dados[5];
+		dados_entrada.muw=Dados[6];
+		dados_entrada.Boref=Dados[7];
+		dados_entrada.co=Dados[8];
+		dados_entrada.muo=Dados[9];
+		dados_entrada.tempo_max=static_cast<int>(Dados[10]);
+		dados_entrada.dt=Dados[11];
+		dados_entrada.Lx=Dados[12];
+		dados_entrada.nx=static_cast<int>(Dados[13]);
+		dados_entrada.tolerancia=Dados[14];
+		dados_entrada.p_0=Dados[15];
+		dados_entrada.p_W=Dados[16];
+		dados_entrada.p_E=Dados[17];
+		dados_entrada.Sw_0=Dados[18];
+		dados_entrada.Sw_W=Dados[19];
 	}
 	else{
 		std::cerr << "Nao foi possivel encontrar o arquivo " << filename;
@@ -326,6 +293,30 @@ SimulationProperties read_input_domain(std::string filename){
 	return dados_entrada;
 }
 
+void print_simulation_properties(){
+	std::cout << "Parametros e propriedades utilizadas na simulacao: \n\n";
+	std::cout << "Comprimento do dominio: " << dados.Lx << " (m)\n";
+	std::cout << "Numero de celulas: " << dados.nx << "\n";
+	std::cout << "Dimensao da celulas: " << dados.dx << " (m)\n";
+	std::cout << "Tempo total simulado: " << dados.tempo_max << " (dias)\n";
+	std::cout << "Passo de tempo: " << dados.dt << " (dias)\n";
+	std::cout << "Viscosidade do oleo: " << dados.muo << "\n";
+	std::cout << "Compressibiliade do oleo: " << dados.co << "\n";
+	std::cout << "B_ref: " << dados.Boref << "\n";
+	std::cout << "Viscosidade da agua: " << dados.muw << "\n";
+	std::cout << "Densidade (sc): " << dados.rhowsc << "\n";
+	std::cout << "Densidade (w): " << dados.rhow << "\n";
+	std::cout << "Porosidade do meio " << dados.phi << "\n";
+	std::cout << "Permeabilidade do meio " << dados.k << "\n";
+	std::cout << "Saturacao irredutivel (siw) " << dados.siw << "\n";
+	std::cout << "Saturacao irredutivel (sor) " << dados.sor << "\n\n";
+	std::cout << "Condicoes iniciais e de contorno: \n\n";
+	std::cout << "Pressao inicial: " << dados.p_0 << "\n";
+	std::cout << "Pressao no contorno esquerdo: " << dados.p_W << "\n";
+	std::cout << "Pressao no contorno direito: " << dados.p_E << "\n";
+	std::cout << "Saturacao inicial: " << dados.Sw_0 << "\n";
+	std::cout << "Saturacao no contorno esquerdo: " << dados.Sw_W << "\n";
+}
 void save_full_data(const Vec1D& Vetor, std::string variavel){
 	static int a {1};
 	std::string init {"output_"};

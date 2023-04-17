@@ -2,52 +2,19 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <sstream>   //std::istringstream
+#include <sstream>    //std::istringstream
 #include <fstream>    // std::ifstream
 #include <cmath>      // std::fabs, std::pow
 #include <algorithm>  // std::min, std::max, std::max_element
 #include <iomanip>    // std::setw
 #include <chrono>     // registro de tempo
 
-//Structs usados para armazenar as propriedades do meio e do dominio da simulacao
-struct RockFluidProperties{
-	//Propriedades do meio
-	double porosidade_rocha {0.1};
-	double permeabilidade_rocha {0.1};
-	double saturacao_agua {0.1};
-	double saturacao_oleo {0.1};
-	//Propriedades da água:
-	double densidade_superficie_sc {1000};
-	double densidade_reservatorio {900};
-	double viscosidade_muw {0.1};
-	//Propriedades do óleo:
-	double b_referencia {1.0};
-	double compressibilidade {1E-6};
-	double viscosidade {2.0};
-};
-struct SimulationProperties{
-	//Características do domínio:
-	int tempo_simulado {100};       // dias
-	double passo_de_tempo {0.1};    // dias
-	double comprimento_x {1000};    // m
-	int numero_de_celulas {400};    // adimensional
-	double tolerancia_tol {1E-8};
-	//Condições iniciais e de contorno:
-	double pressao_inicial {15000};
-	double pressao_esquerda {25000};
-	double pressao_direita {15000};
-	double saturacaow_inicial {1.0};
-	double saturacaow_esquerda {0.0};
-	//Metodo de linearização:
-	int linearizacao {0};
-};
-
+//Struct usado para armazenar as propriedades do meio e do dominio da simulacao
 struct DadosTotais{
 	double tempo_max {5000.0}; // Tempo máximo de simulação (dias)
 	double dt {0.5};           // tamanho do passo de tempo (dias)
 	double Lx {1000};          // Dimensão do reservatório (m)
 	int nx {400};              // número de células (adimensional)
-	int sim_type {0};          // tipo de simulação (adimensional)
 	double tolerancia {1e-8};  // tolerância
 	double dx {0.1};           // dimensão do discretização (m)
 	double p_0 {15000};        // pressão inicial (Pa)
@@ -71,10 +38,6 @@ struct DadosTotais{
 
 //Define o tipo "Vec1D"
 using Vec1D = std::vector<double>;
-
-//Prototipos das funções:
-RockFluidProperties read_input_fluid_rock(std::string filename);
-SimulationProperties read_input_domain(std::string filename);
 
 //Atualiza um vetor V0 com os valores the um outro vetor V
 void update(Vec1D& V0, const Vec1D& V);
@@ -108,7 +71,8 @@ void solver_system();
 void resize_if_needed(int n);
 void save_full_data(const Vec1D& X, std::string variavel);
 void solver_s();
-
+void print_simulation_properties();
+DadosTotais read_input_data(std::string filename);
 //Registro do tempo:
 using milisegundos = std::chrono::milliseconds;
 using SteadyTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
