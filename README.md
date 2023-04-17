@@ -12,8 +12,7 @@ Leitura a partir do arquivo `input_data.txt`
 
 ### Compilação no gcc/g++
 
-1- Na pasta onde estão os arquivos, abra o prompt de comando.
-
+1- Na pasta onde estão os arquivos, abra o prompt de comando (ou Terminal, dependendo da versão do Windows).
 
 2- Digite:
 ```
