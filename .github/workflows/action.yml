@@ -1,0 +1,28 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+- name: Set up GCC
+  uses: egor-tensin/setup-gcc@v1
+  with:
+    version: latest
+    platform: x64
+
+jobs:
+  build:
+    name: Compila o codigo e cria o executavel
+    runs-on: ubuntu-latest
+
+    steps:
+      - run: sudo apt update
+             sudo apt install gcc-10 g++-10
+        shell: bash
+      - run:   cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+        shell: bash
+        env:
+         CC:   gcc-10
+         CXX:  g++-10
