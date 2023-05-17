@@ -14,28 +14,30 @@ struct DadosTotais{
 	double tempo_max {5000.0}; // Tempo máximo de simulação (dias)
 	double dt {0.5};           // tamanho do passo de tempo (dias)
 	double Lx {1000};          // Dimensão do reservatório (m)
-	int nx {400};              // número de células (adimensional)
+	int nx {6};              // número de células (adimensional)
 	double tolerancia {1e-8};  // tolerância
 	double dx {0.1};           // dimensão do discretização (m)
 	double p_0 {15000};        // pressão inicial (Pa)
 	double p_W {25000};        // pressão no contorno esquerdo (Pa)
 	double p_E {15000};        // pressão no contorno direito (Pa)
-	double Sw_0 {0.2};         // Saturação inicial (adimensional)
-	double Sw_W {1.0};         // Saturação no contorno esquerdo (adimensional)
+	double Sg_0 {0.2};         // Saturação inicial (adimensional)
+	double Sg_W {1.0};         // Saturação no contorno esquerdo (adimensional)
 	double phi {0.20};         // porosidade da rocha (adimensional)
 	double k {0.030};          // permeabilidade da rocha (unidade)
 	double siw {0.15};         // saturação irredutivel agua
 	double sor {0.10};         // saturação irredutivel oleo
 	double rhowsc {1000.0};    // massa específica (kg/m^3)
 	double rhow {990};         // massa específica (kg/m^3)
-	double muw {1000.0};       // viscosidade da agua
+	double mug {1000.0};       // viscosidade da agua
 	double Boref {1.4};        // Fator Volume Formação (?)
 	double co {1e-6};          // compressibilidade
 	double muo {50};           // Viscosidade do oleo
 	double pref {50};          //
-	double Bw {50};            //
+	double Bg {50};            //
 };
 
+	const int MAX_ITER = 50;
+	const double eps = 0.0001;
 //Define o tipo "Vec1D"
 using Vec1D = std::vector<double>;
 
@@ -48,8 +50,8 @@ double evaluate_dB(double bo, double bo0, double P, double P0);
 void oil_prop(Vec1D& B, const Vec1D& P);//Preenche um vetor "B" com os valores do fator volume formação para cada pressão em P
 double calc_Bo(const double P);
 void rel_perm();
-double calc_kro(double sw); // Modelo de Corey para permeabilidade relativa óleo/água
-double calc_krw(double sw);
+double calc_kro(double Sg); // Modelo de Corey para permeabilidade relativa óleo/água
+double calc_krg(double Sg);
 int upwind(double pesq, double pdir);
 void Transmissibilidade();
 double dB(double bo, double bo0, double P, double P0);
@@ -63,6 +65,26 @@ void resize_if_needed(int n);
 void save_full_data(const Vec1D& X, std::string variavel);
 void solver_s();
 void print_simulation_properties();
+void print_array_2D(const std::vector<Vec1D>& M);
+void print_vector(const Vec1D& M);
+
+void gauss_solver(std::vector<std::vector<double>>& A, std::vector<double>& B, std::vector<double>& X);
+bool is_diagonal_dom(const std::vector<std::vector<double>>& M);
+void criarvx0();
+void ccoef();
+void cvecD();
+void funcionamento();
+void TransmissibilidadeGas();
+void TransmissibilidadeOleo();
+void DerivadaPressaoCapilar();
+void CalcularCgg();
+void CalcularCgp();
+void CalcularCog();
+void CalcularCop();
+void derivada_B_gas();
+void derivada_B_oleo();
+
+
 DadosTotais read_input_data(std::string filename);
 
 //Registro do tempo:
