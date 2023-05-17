@@ -1,4 +1,4 @@
-#include <iostream>
+﻿#include <iostream>
 #include "prototypes.h"
 
 //Váriáveis da simulação
@@ -14,18 +14,23 @@ Vec1D RESs(dados.nx, 0.0);              // n elementos, inicializados em 0
 Vec1D p(dados.nx, dados.p_0);           // n elementos, inicializados com p_0
 Vec1D p_old(dados.nx, dados.p_0);       // n elementos, inicializados com p_0
 Vec1D p_it(dados.nx, dados.p_0);        // n elementos, inicializados com p_0
-Vec1D Sw(dados.nx, dados.Sw_0);         // n elementos, inicializados com Sw_0
-Vec1D Sw_old(dados.nx, dados.Sw_0);     // n elementos, inicializados com Sw_0
-Vec1D Sw_it(dados.nx, dados.Sw_0);      // n elementos, inicializados com Sw_0
+Vec1D Sg(dados.nx, dados.Sg_0);         // n elementos, inicializados com Sg_0
+Vec1D Sg_old(dados.nx, dados.Sg_0);     // n elementos, inicializados com Sg_0
+Vec1D Sg_it(dados.nx, dados.Sg_0);      // n elementos, inicializados com Sg_0
 Vec1D Cop(dados.nx, 0.0);
-Vec1D Cow(dados.nx, 0.0);
-Vec1D Cww(dados.nx, 0.0);
+Vec1D Cog(dados.nx, 0.0);
+Vec1D Cgg(dados.nx, 0.0);
+Vec1D Cgp(dados.nx, 0.0);
 Vec1D Kro(dados.nx, 0.0);
-Vec1D Krw(dados.nx, 0.0);
+Vec1D Krg(dados.nx, 0.0);
 Vec1D Bo(dados.nx, 0.0);
 Vec1D Bo_old(dados.nx, 0.0);
 Vec1D To(dados.nx+1, 0.0);               // Transmissibilidade
-Vec1D Tw(dados.nx+1, 0.0);               // Transmissibilidade
+Vec1D Tg(dados.nx+1, 0.0);               // Transmissibilidade
+Vec1D Pc(dados.nx+1,0.0);
+Vec1D X0(2*dados.nx,0.0);
+
+std::vector<Vec1D> coef(2*dados.nx,Vec1D(2*dados.nx,0.0));
 
 int main(int argc, char *argv[] ){
 	std::cout << "Inicio da simulacao" << std::endl;
@@ -38,7 +43,7 @@ int main(int argc, char *argv[] ){
 
 	//Definicão de variáveis calculadas a partir dos dados de entrada:
 	resize_if_needed(n);
-	dados.Bw = dados.rhowsc/dados.rhow;
+	dados.Bg = dados.rhowsc/dados.rhow;
 	dados.dx = dados.Lx/n;
 	dados.pref = dados.p_0;
 
@@ -52,7 +57,7 @@ int main(int argc, char *argv[] ){
 
 	//Salva os dados:
 	save_full_data(p,"Pressao");
-	save_full_data(Sw,"Saturacao");
+	save_full_data(Sg,"Saturacao");
 	std::cout << "Fim da simulacao" << std::endl;
 	return 0;
 }
@@ -86,9 +91,11 @@ void acumulo(){
 	double bl {1.0};
 	for(int i = 0; i < dados.nx; i++){
 		bl = dB(Bo[i],Bo_old[i],p[i],p_old[i]);
-		Cop[i] = v*(1 - Sw_old[i])*bl;
-		Cow[i] = -v/Bo[i];
-		Cww[i] = v/dados.Bw;
+		Cop[i] = v*(1 - Sg_old[i])*bl;
+		Cog[i] = -v/Bo[i];
+		Cgg[i] = v/dados.Bg;
+		Cgp[i] = v*Sg_old[i]*bl;
+		
 	}
 }
 
@@ -110,25 +117,25 @@ double calc_Bo(const double P){
 }
 void rel_perm(){
 	for(int i = 0; i < dados.nx; i++){
-		Kro[i] = calc_kro(Sw[i]);
-		Krw[i] = calc_krw(Sw[i]);
+		Kro[i] = calc_kro(Sg[i]);
+		Krg[i] = calc_krg(Sg[i]);
 	}
 }
 // Modelo de Corey para permeabilidade relativa óleo/água
-double calc_kro(double sw){
-	double so = 1 - sw;
+double calc_kro(double Sg){
+	double so = 1 - Sg;
 	double aux {0.0};
 	double ret {0.0};
-	aux = (sw - dados.siw)/(1 - dados.siw);
+	aux = (Sg - dados.siw)/(1 - dados.siw);
 	ret = (1 - aux*aux) * (1 - aux)*(1 - aux);
 	ret = std::max(0.0,ret);
 	ret = std::min(ret,1.0);
 	return ret;
 }
-double calc_krw(double sw){
+double calc_krg(double Sg){
 	double aux {0.0};
 	double ret {0.0};
-	aux = (sw - dados.siw)/(1 - dados.siw);
+	aux = (Sg - dados.siw)/(1 - dados.siw);
 	ret = std::pow(aux,4);
 	ret = std::max(0.0,ret);
 	ret = std::min(ret,1.0);
@@ -139,29 +146,29 @@ int upwind(double pesq, double pdir){
 }
 void Transmissibilidade(){
 	double conv = 8.64E-2;
-	const auto Gw = (conv*dados.k)/(dados.Bw*dados.muw*dados.dx*dados.dx);
+	const auto Gw = (conv*dados.k)/(dados.Bg*dados.mug*dados.dx*dados.dx);
 	const auto Go = (conv*dados.k)/(dados.muo*dados.dx*dados.dx);
 
 	auto Bomed = calc_Bo(dados.p_W);
 	auto ud = upwind(dados.p_W, p[0]);
-	auto kroud = ud*calc_kro(dados.Sw_W) + (1-ud)*Kro[0];
-	auto krwud = ud*calc_krw(dados.Sw_W) + (1-ud)*Krw[0];
+	auto kroud = ud*calc_kro(dados.Sg_W) + (1-ud)*Kro[0];
+	auto krgud = ud*calc_krg(dados.Sg_W) + (1-ud)*Krg[0];
 	To[0] = 2*Go*(kroud/Bomed);
-	Tw[0] = 2*Gw*krwud;
+	Tg[0] = 2*Gw*krgud;
 	for(int i = 1; i < dados.nx; i++){
 		Bomed = (Bo[i-1] + Bo[i])/2;
 		ud    = upwind(p[i-1],p[i]);
 		kroud = ud*Kro[i-1] + (1-ud)*Kro[i];
-		krwud = ud*Krw[i-1] + (1-ud)*Krw[i];
+		krgud = ud*Krg[i-1] + (1-ud)*Krg[i];
 		To[i] = Go*(kroud/Bomed);
-		Tw[i] = Gw*krwud;
+		Tg[i] = Gw*krgud;
 	}
 	Bomed = calc_Bo(dados.p_E);
-	/// S_E = Sw[nx-1] (condicao de derivada nula)
+	/// S_E = Sg[nx-1] (condicao de derivada nula)
 	kroud = Kro[dados.nx-1];
-	krwud = Krw[dados.nx-1];
+	krgud = Krg[dados.nx-1];
 	To[dados.nx] = 2*Go*(kroud/Bomed);
-	Tw[dados.nx] = 2*Gw*krwud;
+	Tg[dados.nx] = 2*Gw*krgud;
 }
 
 double dB(double bo, double bo0, double P, double P0){
@@ -197,26 +204,90 @@ void solucao_explicita(){
 		current_time += dados.dt;
 		update(Bo_old,Bo);
 		update(p_old,p);
-		update(Sw_old,Sw);
+		update(Sg_old,Sg);
 	}
 }
-
+//montar vetor de incogntas inicial com 2*nx	
+void criarvx0 (){
+	for (int w=0; w<=2*dados.nx;w=w+2){
+	X0[w]=dados.Sg_0;
+	X0[w+1]=dados.p_0;
+	}
+}
+//matraz dos coeicinetes
+void ccoef(){
+	// analizar que pode ter coef errados 
+	int m=2*dados.nx;
+	int n=2*dados.nx;
+	// condiçoes de contorno esquerda
+	// saturação
+	coef[0][0]= 1; //Cgg[0]+Tg[0-1]*Pc[0-1]+Tg[0]Pc[0];
+	coef[0][1]= 1; //Tg[0]+Tg[0-1]+Cgp[0];
+	coef[0][2]= 1; // -(Tg[0-1]*Pc[0];
+	coef[0][3]= 1; // - Tg[0];
+	// pressão
+	coef[1][0]= 1; // Cog[0];
+	coef[1][1]= 1; // To[0]+To[0-1]+Cop[0];
+	coef[1][3]= 1; // -To[0];
+	// i/2 - para aindar o vetor transmissibilidade 	
+	for(int i=2;i<m-2;i=i+2){
+		//preenchimento saturação 
+		
+		int j=i-2;
+		coef[i][j]=-(Tg[(i/2)-1]*Pc[(i/2)-1]);
+		coef[i][j+1]= -Tg[(i/2)-1];
+		coef[i][j+2]= Cgg[i/2]+Tg[(i/2)-1]*Pc[(i/2)-1]+Tg[i/2]*Pc[i/2];
+		coef[i][j+3]= Tg[i/2]+Tg[(i/2)-1]+Cgp[i/2];
+		coef[i][j+4]= -(Tg[(i/2)-1]*Pc[i/2]);
+		coef[i][j+5]= - Tg[i/2];
+		
+		// pressão
+		j=i-1;
+		coef[i+1][j]=-To[(i/2)-1];
+		coef[i+1][j+1]= Cog[i/2];
+		coef[i+1][j+2]= To[i/2]+To[(i/2)-1]+Cop[i/2];
+		coef[i+1][j+4]= -To[i/2];
+		
+	}
+	// saturação
+	coef[m-2][m-4]= 1; // -(Tg[nx-2]*Pc[nx-2];
+	coef[m-2][m-3]= 1; // -Tg[nx-2];
+	coef[m-2][m-2]= 1; // Cgg[nx-1]+Tg[nx-2]*Pc[nx-2]+Tg[nx-1]Pc[nx-1];
+	coef[m-2][m-1]= 1; // Tg[nx-1]+Tg[(nx-2]+Cgp[nx-1];
+	// pressão
+	coef[m-1][m-3]= 1; // -To[nx-2];
+	coef[m-1][m-2]= 1; // Cog[nx-1]; 
+	coef[m-1][m-1]= 1; // To[nx-1]+To[nx-2]+Cop[nx-1];
+	
+}
+//vetor de termos constantes
+void cvecD(){
+	int m=2*dados.nx;
+	D[0]= 0; // Cgp[0]*p_old[0]+Cgg[0]*Sg_old[0] Tg[0-1]*P_E+ td[0-1]*Pc[0-1]*S_E;
+	D[1]= 0; // Cop[0]*p_old[0]+Cog[0]*Sg_old[0]+To[0-1]*P_E;
+	for (int i=2;i<m-2;i=i+2){
+		D[i]=Cgp[i/2]*p_old[i/2]+Cgg[i/2]*Sg_old[i/2];
+		D[i+1]=Cop[i/2]*p_old[i/2]+Cog[i/2]*Sg_old[i/2];
+	}
+	D[m-2]=0; //Cgp[nx-1]*p_old[nx-1]+Cgg[nx-1]*Sg_old[nx-1]+Tg[nx-1]*P_D+ Tg[nx-2]*Pc[nx-2]*S_D;
+	D[m-1]= 0; //Cop[nx-1]*p_old[nx-1]+Cog[nx-1]*Sg_old[nx-1]+Cog[nx-1]*Sg_old[mx-1]+To[nx-1]*P_D;
+}
 void fill_matrix(){
 	auto nx=dados.nx;
-	auto bw=dados.Bw;
-	M[0] = Bo[0]*To[0] + bw*Tw[0] + Bo[0]*To[1] + bw*Tw[1] + Bo[0]*Cop[0];
-	E[0] = - (Bo[0]*To[1] + bw*Tw[1]);
-	D[0] = Bo[0]*Cop[0]*p_old[0] + (Bo[0]*To[0] + bw*Tw[0])*dados.p_W;
+	auto bg=dados.Bg;
+	M[0] = Bo[0]*To[0] + bg*Tg[0] + Bo[0]*To[1] + bg*Tg[1] + Bo[0]*Cop[0];
+	E[0] = - (Bo[0]*To[1] + bg*Tg[1]);
+	D[0] = Bo[0]*Cop[0]*p_old[0] + (Bo[0]*To[0] + bg*Tg[0])*dados.p_W;
 
 	for(int i = 1; i < dados.nx-1; i++){
-		W[i] = - (Bo[i]*To[i] + bw*Tw[i]);
-		E[i] = - (Bo[i]*To[i+1] + bw*Tw[i+1]);
+		W[i] = - (Bo[i]*To[i] + bg*Tg[i]);
+		E[i] = - (Bo[i]*To[i+1] + bg*Tg[i+1]);
 		M[i] = Bo[i]*Cop[i] - W[i] - E[i];
 		D[i] = Bo[i]*Cop[i]*p_old[i];
 	}
-	W[nx-1] = - (Bo[nx-1]*To[nx-1] + bw*Tw[nx-1]);
-	M[nx-1] = Bo[nx-1]*To[nx-1] + bw*Tw[nx-1] + Bo[nx-1]*To[nx] + bw*Tw[nx] + Bo[nx-1]*Cop[nx-1];
-	D[nx-1] = Bo[nx-1]*Cop[nx-1]*p_old[nx-1] + (Bo[nx-1]*To[nx] + bw*Tw[nx])*dados.p_E;
+	W[nx-1] = - (Bo[nx-1]*To[nx-1] + bg*Tg[nx-1]);
+	M[nx-1] = Bo[nx-1]*To[nx-1] + bg*Tg[nx-1] + Bo[nx-1]*To[nx] + bg*Tg[nx] + Bo[nx-1]*Cop[nx-1];
+	D[nx-1] = Bo[nx-1]*Cop[nx-1]*p_old[nx-1] + (Bo[nx-1]*To[nx] + bg*Tg[nx])*dados.p_E;
 }
 void solver_system(){
 	auto nx=dados.nx;
@@ -231,15 +302,68 @@ void solver_system(){
 		p[i] = (D[i] - E[i]*p[i+1])/M[i];
 	}
 }
-
+// não é necessaria 
 void solver_s(){
 	auto nx=dados.nx;
-	Sw[0] = Sw_old[0] + (1.0/Cww[0]) * ( Tw[1]*(p[1] - p[0]) + Tw[0]*(dados.p_W - p[0]));
+	Sg[0] = Sg_old[0] + (1.0/Cgg[0]) * ( Tg[1]*(p[1] - p[0]) + Tg[0]*(dados.p_W - p[0]));
 	for(int i = 1; i < nx-1; i++){
-		Sw[i] = Sw_old[i] + (1.0/Cww[i]) * ( Tw[i+1]*(p[i+1] - p[i]) + Tw[i]*(p[i-1] - p[i]) );
+		Sg[i] = Sg_old[i] + (1.0/Cgg[i]) * ( Tg[i+1]*(p[i+1] - p[i]) + Tg[i]*(p[i-1] - p[i]) );
 	}
-	Sw[nx-1] = Sw_old[nx-1] + (1.0/Cww[nx-1]) * ( Tw[nx]*(dados.p_E - p[nx-1]) + Tw[nx-1]*(p[nx-2] - p[nx-1]));
+	Sg[nx-1] = Sg_old[nx-1] + (1.0/Cgg[nx-1]) * ( Tg[nx]*(dados.p_E - p[nx-1]) + Tg[nx-1]*(p[nx-2] - p[nx-1]));
 }
+
+void gauss_solver(std::vector<std::vector<double>>& A, std::vector<double>& B, std::vector<double>& X){
+	auto m = B.size();  // numero de linhas
+	auto n = m;         // numero de colunas
+	
+	auto Y = X;          // matriz auxiliar
+	auto E = X;          // necessária para estimar o erro de uma iteração a outra
+	int counter = 1;     // Contar iterações apenas pro caso da tolerancia nao ser atingida.
+	//Se a matriz é diagonal dominante, a convergência é garantida
+	bool teste = false;
+	
+	while(!teste && counter<MAX_ITER){
+		teste = true;
+		//std::cout << "Iteracao " << std::setprecision(10) << counter << '\n';
+		for (int i = 0; i < m; i++){
+			Y[i] = (B[i] / A[i][i]);
+			for (int j = 0; j < n; j++){
+				if (j==i)
+					continue;
+				Y[i] = Y[i] - ((A[i][j] / A[i][i]) * X[j]);
+				X[i] = Y[i]; //escreve em X a estimativa encontrada
+			}
+			auto res = std::fabs(((X[i] - E[i]) / X[i])) <= eps;
+			teste = teste & res;
+			//std::cout<< "x" << i + 1 << " = " << Y[i] << '\n';
+			E[i] = X[i];
+		}
+		counter++;
+		//std::cout << '\n';
+	}
+}
+
+bool is_diagonal_dom(const std::vector<std::vector<double>>& M){
+	auto m=M[0].size();
+	auto n=M.size();
+	if (m != n)
+		std::cout << "As dimensoes nao sao compativeis" << std::endl;
+
+	for (int i=0; i < m; i++){
+		double diag = M[i][i];
+		double sum = 0.0;
+		for (int j = 0; j < n; j++){
+			if (i==j)
+				continue;
+			sum = sum + std::fabs(M[i][j]);
+		}
+		if (sum > diag){
+			return false;
+		}
+	}
+	return true;
+}
+
 
 DadosTotais read_input_data(std::string filename){
 	DadosTotais dados_entrada;
@@ -271,7 +395,7 @@ DadosTotais read_input_data(std::string filename){
 		dados_entrada.sor=Dados[3];
 		dados_entrada.rhowsc=Dados[4];
 		dados_entrada.rhow=Dados[5];
-		dados_entrada.muw=Dados[6];
+		dados_entrada.mug=Dados[6];
 		dados_entrada.Boref=Dados[7];
 		dados_entrada.co=Dados[8];
 		dados_entrada.muo=Dados[9];
@@ -283,8 +407,8 @@ DadosTotais read_input_data(std::string filename){
 		dados_entrada.p_0=Dados[15];
 		dados_entrada.p_W=Dados[16];
 		dados_entrada.p_E=Dados[17];
-		dados_entrada.Sw_0=Dados[18];
-		dados_entrada.Sw_W=Dados[19];
+		dados_entrada.Sg_0=Dados[18];
+		dados_entrada.Sg_W=Dados[19];
 	}
 	else{
 		std::cerr << "Nao foi possivel encontrar o arquivo " << filename;
@@ -319,18 +443,19 @@ void resize_if_needed(int n){
 	p.resize(n,dados.p_0);
 	p_old.resize(n,dados.p_0);
 	p_it.resize(n,dados.p_0);
-	Sw.resize(n,dados.Sw_0);
-	Sw_old.resize(n,dados.Sw_0);
-	Sw_it.resize(n,dados.Sw_0);
+	Sg.resize(n,dados.Sg_0);
+	Sg_old.resize(n,dados.Sg_0);
+	Sg_it.resize(n,dados.Sg_0);
 	Cop.resize(n,0.0);
-	Cow.resize(n,0.0);
-	Cww.resize(n,0.0);
+	Cog.resize(n,0.0);
+	Cgg.resize(n,0.0);
+	Cgp.resize(n,0.0);
 	Kro.resize(n,0.0);
-	Krw.resize(n,0.0);
+	Krg.resize(n,0.0);
 	Bo.resize(n,0.0);
 	Bo_old.resize(n,0.0);
 	To.resize(n+1,0.0);
-	Tw.resize(n+1,0.0);
+	Tg.resize(n+1,0.0);
 }
 
 
@@ -344,7 +469,7 @@ void print_simulation_properties(){
 	std::cout << "Viscosidade do oleo: " << dados.muo << "\n";
 	std::cout << "Compressibiliade do oleo: " << dados.co << "\n";
 	std::cout << "B_ref: " << dados.Boref << "\n";
-	std::cout << "Viscosidade da agua: " << dados.muw << "\n";
+	std::cout << "Viscosidade da agua: " << dados.mug << "\n";
 	std::cout << "Densidade (sc): " << dados.rhowsc << "\n";
 	std::cout << "Densidade (w): " << dados.rhow << "\n";
 	std::cout << "Porosidade do meio " << dados.phi << "\n";
@@ -355,6 +480,6 @@ void print_simulation_properties(){
 	std::cout << "Pressao inicial: " << dados.p_0 << "\n";
 	std::cout << "Pressao no contorno esquerdo: " << dados.p_W << "\n";
 	std::cout << "Pressao no contorno direito: " << dados.p_E << "\n";
-	std::cout << "Saturacao inicial: " << dados.Sw_0 << "\n";
-	std::cout << "Saturacao no contorno esquerdo: " << dados.Sw_W << "\n";
+	std::cout << "Saturacao inicial: " << dados.Sg_0 << "\n";
+	std::cout << "Saturacao no contorno esquerdo: " << dados.Sg_W << "\n";
 }
