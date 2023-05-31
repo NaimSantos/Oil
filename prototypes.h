@@ -9,12 +9,15 @@
 #include <iomanip>    // std::setw
 #include <chrono>     // registro de tempo
 
+//Define o tipo "Vec1D"
+using Vec1D = std::vector<double>;
+
 //Struct usado para armazenar as propriedades do meio e do dominio da simulacao
 struct DadosTotais{
 	double tempo_max {5000.0}; // Tempo máximo de simulação (dias)
 	double dt {0.5};           // tamanho do passo de tempo (dias)
 	double Lx {1000};          // Dimensão do reservatório (m)
-	int nx {6};              // número de células (adimensional)
+	int nx {6};                // número de células (adimensional)
 	double tolerancia {1e-8};  // tolerância
 	double dx {0.1};           // dimensão do discretização (m)
 	double p_0 {15000};        // pressão inicial (Pa)
@@ -39,50 +42,26 @@ struct DadosTotais{
 	double T{0.1};
 
 };
-
+// Constantes do processo iterativo do Guass Siedel
 const int MAX_ITER = 50;
 const double eps = 0.0001;
-//Define o tipo "Vec1D"
-using Vec1D = std::vector<double>;
 
-void update(Vec1D& V0, const Vec1D& V); //Atualiza um vetor V0 com os valores the um outro vetor V
-void rel_diff(Vec1D& dif, const Vec1D& V, const Vec1D& V0); //Atualiza um vetor "diff" com a diferença relativa entre os pares de dois vetores V e V0
-void abs_diff(Vec1D& dif, const Vec1D& V, double *V0); //Atualiza um vetor "diff" com a diferença absoluta entre os pares de dois vetores V e V0
-double max_vetor(Vec1D& V);
-void acumulo();
+
+void update(Vec1D& V0, const Vec1D& V);
 double evaluate_dB(double bo, double bo0, double P, double P0);
-void oil_prop(Vec1D& B, const Vec1D& P);//Preenche um vetor "B" com os valores do fator volume formação para cada pressão em P
+void oil_prop(Vec1D& B, const Vec1D& P);
 double calc_Bo(const double P);
-void rel_perm();
-double calc_kro(double Sg); // Modelo de Corey para permeabilidade relativa óleo/água
-double calc_krg(double Sg);
 int upwind(double pesq, double pdir);
-void Transmissibilidade();
 double dB(double bo, double bo0, double P, double P0);
-void print_field_x(Vec1D&, double DX, int n);
-void solucao_explicita();
-void simulador_exp();
-void solucao_implicita();
-void fill_matrix();
-void solver_system();
-void resize_if_needed(int n);
-void save_full_data(const Vec1D& X, std::string variavel);
-void solver_s();
-void print_simulation_properties();
-void print_array_2D(const std::vector<Vec1D>& M);
-void print_vector(const Vec1D& M);
-// novas funções
-void divx (std::vector<double>& X,std::vector<double>& A,std::vector<double>& B);
+void divx (Vec1D& X, Vec1D& A, Vec1D& B);
 void atualvec (Vec1D& x0, Vec1D& X);
 double calc_Bg(double P);
 double ca_kro (double S);
 double ca_krg (double S);
+double CalcularPcgo(double Sg);
 void gas_prop(Vec1D& B, const Vec1D& P);
-
-//
-
-void gauss_solver(std::vector<std::vector<double>>& A, std::vector<double>& B, std::vector<double>& X);
-bool is_diagonal_dom(const std::vector<std::vector<double>>& M);
+void gauss_solver(std::vector<Vec1D>& A, Vec1D& B, Vec1D& X);
+bool is_diagonal_dom(const std::vector<Vec1D>& M);
 void criarvx0();
 void ccoef();
 void cvecD();
@@ -96,11 +75,19 @@ void CalcularCog();
 void CalcularCop();
 double derivada_B_gas(double b,double p);
 double derivada_B_oleo(double b,double p);
+//area para novas funçoes:
 
 
+
+//funcoes utilitarias:
+void resize_if_needed(int n);
+void save_full_data(const Vec1D& X, std::string variavel);
+void print_simulation_properties();
+void print_array_2D(const std::vector<Vec1D>& M);
+void print_vector(const Vec1D& M);
 DadosTotais read_input_data(std::string filename);
 
-//Registro do tempo:
+//Funcoes relacionadas ao registro do tempo:
 using milisegundos = std::chrono::milliseconds;
 using SteadyTimePoint = std::chrono::time_point<std::chrono::steady_clock>;
 class CustomTimer{
@@ -115,7 +102,7 @@ class CustomTimer{
 			auto start = std::chrono::time_point_cast<milisegundos>(startpoint).time_since_epoch().count();
 			auto end = std::chrono::time_point_cast<milisegundos>(endpoint).time_since_epoch().count();
 			auto total = end - start;
-			std::cout << "\nTempo decorrido: " << total << " millisegundos" << std::endl;
+			std::cout << "Tempo decorrido: " << total << " millisegundos" << std::endl;
 		}
 };
 
@@ -127,3 +114,24 @@ SteadyTimePoint capture_time(){
 double get_elapsed_time(SteadyTimePoint ti, SteadyTimePoint tf){
 	return static_cast<double>(std::chrono::duration_cast<milisegundos> (tf - ti).count());
 }
+
+
+
+
+//Prototipos das funcoes do Joao:
+
+//void rel_diff(Vec1D& dif, const Vec1D& V, const Vec1D& V0);
+//void abs_diff(Vec1D& dif, const Vec1D& V, double *V0);
+//double max_vetor(Vec1D& V);
+//void acumulo();
+//void rel_perm();
+//double calc_kro(double Sg); // Modelo de Corey para permeabilidade relativa óleo/água
+//double calc_krg(double Sg);
+//void Transmissibilidade();
+//void fill_matrix();
+//void solver_system();
+//void solucao_explicita();
+//void solver_s();
+// void print_field_x(Vec1D&, double DX, int n);
+//void simulador_exp();
+//void solucao_implicita();
