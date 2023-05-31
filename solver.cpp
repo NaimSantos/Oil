@@ -25,10 +25,13 @@ Vec1D Kro(dados.nx, 0.0);
 Vec1D Krg(dados.nx, 0.0);
 Vec1D Bo(dados.nx, 0.0);
 Vec1D Bo_old(dados.nx, 0.0);
+Vec1D Bg(dados.nx, 0.0);
+Vec1D Bg_old(dados.nx, 0.0);
 Vec1D To(dados.nx+1, 0.0);               // Transmissibilidade
 Vec1D Tg(dados.nx+1, 0.0);               // Transmissibilidade
 Vec1D Pc(dados.nx+1,0.0);
 Vec1D X0(2*dados.nx,0.0);
+Vec1D X(2*dados.nx,0.0);
 
 std::vector<Vec1D> coef(2*dados.nx, Vec1D(2*dados.nx, 0.0));
 
@@ -49,16 +52,53 @@ int main(int argc, char *argv[] ){
 
 	//Exibição das informações do problema:
 	print_simulation_properties();
-
-	//std::cout << "Antes do preenchimento: \n";
-	//print_array_2D(coef);
-	//ccoef();
-	//std::cout << "Depois do preenchimento: \n";
-	//print_array_2D(coef);
-
-
-	// Atualizar o fator volume formação:
+	
 	oil_prop(Bo_old,p);
+	gas_prop(Bg_old,p);
+	update(Bo, Bo_old);
+	update(Bg, Bg_old);
+	std::cout << "Antes do preenchimento: \n";
+	print_array_2D(coef);
+	std::cout << "Vetor Tg \n ";
+	print_vector(Tg);
+	std::cout << "Vetor To \n ";
+	print_vector(To);
+	criarvx0 ();
+	ccoef();
+	std::cout << "Teste diagonal dominante \n";	
+	is_diagonal_dom(coef);
+	std::cout << "Depois do preenchimento: \n";
+	print_array_2D(coef);
+	std::cout << "Vetor Tg \n ";
+	print_vector(Tg);
+	std::cout << "Vetor To \n ";
+	print_vector(To);
+	std::cout << "Vetor Bo_old \n ";
+	print_vector(Bo_old);
+	std::cout << "Vetor Bg\n ";
+	print_vector(Bg);
+	std::cout << "\n antes da funcao funcionamento\n";
+	std::cout << "\n veotr X0\n ";
+	print_vector(X0);
+	std::cout << "Vetor Sg\n ";
+	print_vector(Sg);
+	std::cout << "\n\n teste funcao funcionamento\n\n ";
+	funcionamento();
+	std::cout << "\n veotr X0\n ";
+	print_vector(X0);
+	std::cout << "Vetor Sg\n ";
+	print_vector(Sg);
+	/*
+	std::cout << "teste de funcionamento";
+	funcionamento();
+		std::cout << "Vetor p\n ";
+	print_vector(p);
+		std::cout << "Vetor Sg\n ";
+	print_vector(Sg);
+	*/
+	
+	// Atualizar o fator volume formação:
+	
 	//Invoca o simulador:
 	//solucao_explicita();
 
@@ -123,10 +163,10 @@ void oil_prop(Vec1D& B, const Vec1D& P){
 double calc_Bo(const double P){
 	return dados.Boref/( 1.0 + dados.co*(P - dados.pref));
 }
-void rel_perm(){
+void rel_perm(){// adaptação
 	for(int i = 0; i < dados.nx; i++){
-		Kro[i] = calc_kro(Sg[i]);
-		Krg[i] = calc_krg(Sg[i]);
+		Kro[i] = ca_kro(Sg[i]);
+		Krg[i] = ca_krg(Sg[i]);
 	}
 }
 // Modelo de Corey para permeabilidade relativa óleo/água
@@ -229,31 +269,90 @@ void funcionamento(){
 		invocar o Gauss-Siedel, utilizando as pressao/saturação obtidas
 		obtem novas estimativa para pressao/saturação
 	*/
+	// Calculo do fator volume formação 
+	oil_prop(Bo_old,p);
+	gas_prop(Bg_old,p);
+	update(Bo, Bo_old);
+	update(Bg, Bg_old);
+	criarvx0 ();
+	// preencher a matriz de coeficientes
+	ccoef();
+	// preencher a matriz de termos independentes // usar matrz ou vetor?
+	cvecD();
+	// invocar o Gauss-Siedel, utilizando as pressao/saturação inicial como estimativa
+	gauss_solver(coef,D,X0);
+	divx (X,Sg,p);
+	// obtem novas estimativa para pressao/saturação
+	atualvec(p_old,p);
+	atualvec(Sg_old,Sg);
+	atualvec(Bo_old,Bo);
+	atualvec(Bg_old,Bg);
+	// while (tempo_atual < tempo_max)
+		double temat;
+		while (temat < dados.tempo_max){
+			
+			ccoef();
+			cvecD();
+			gauss_solver(coef,D,X0); 
+			divx (X,Sg,p);
+			atualvec(p_old,p);
+			atualvec(Sg_old,Sg);
+			atualvec(Bo_old,Bo);
+			atualvec(Bg_old,Bg);
+			temat=temat+dados.dt;
+			
+		}
 }
+
+
+
+double ca_kro (double S){
+	double frac= ((1.0-S)*dados.sor)/(1.0-dados.sor);
+	double exp= (2.0+3.0*dados.Alf)/dados.Alf;
+	return pow(frac,exp);
+}
+double ca_krg (double S){
+	double frac=((1.0-S)-dados.sor)/(1.0-dados.sor);
+	double frac2=(1.0-1.0-S)/(1.0-dados.sor);
+	double exp=(2.0+dados.Alf)/dados.Alf;
+	return pow(frac2,2)*(1-pow(frac,exp));
+}
+double calc_Bg(double P){
+	return 0.0282*((dados.T*dados.Z)/P);
+}
+void gas_prop(Vec1D& B, const Vec1D& P){
+	for(int i = 0; i < dados.nx; i++){
+		B[i] = calc_Bg(P[i]); // ver quais seriam esses fatores
+	}
+}
+
+
 void TransmissibilidadeGas(){
 	//Tg
-	double conv = 8.64E-2;
-	const auto Go = (conv*dados.k)/(dados.muo*dados.dx*dados.dx);
-	auto Bo_med = calc_Bo(dados.p_W);
+
+	double conv =8.64E-2;
+	const auto Gg = (conv*dados.k)/(dados.muo*dados.dx*dados.dx);
+	auto Bg_med = calc_Bg(dados.p_W);// ver quais seriam esses fatores
 	auto ud = upwind(dados.p_W, p[0]);
-	auto kroud = ud*calc_kro(dados.Sg_W) + (1-ud)*Kro[0];
-	Tg[0] = 2*Go*(kroud/Bo_med);
+	auto krgud = ud*ca_krg(dados.Sg_W) + (1-ud)*Krg[0];
+	Tg[0] = 2*Gg*(krgud/Bg_med);
 	for(int i = 1; i < dados.nx; i++){
-		Bo_med = (Bo[i-1] + Bo[i])/2;
+		Bg_med = (Bg[i-1] + Bg[i])/2;
 		ud    = upwind(p[i-1],p[i]);
-		kroud = ud*Kro[i-1] + (1-ud)*Kro[i];
-		Tg[i] = Go*(kroud/Bo_med);
+		krgud = ud*Krg[i-1] + (1-ud)*Krg[i];
+		Tg[i] = Gg*(krgud/Bg_med);
 	}
-	Bo_med = calc_Bo(dados.p_E);
-	kroud = Kro[dados.nx-1];
-	Tg[dados.nx] = 2*Go*(kroud/Bo_med);
+	Bg_med = calc_Bg(dados.p_E);// ver quais seriam esses fatores
+	krgud = Krg[dados.nx-1];
+	Tg[dados.nx] = 2*Gg*(krgud/Bg_med);
 }
 void TransmissibilidadeOleo(){
+
 	double conv = 8.64E-2;
 	const auto Go = (conv*dados.k)/(dados.muo*dados.dx*dados.dx);
 	auto Bomed = calc_Bo(dados.p_W);
 	auto ud = upwind(dados.p_W, p[0]);
-	auto kroud = ud*calc_kro(dados.Sg_W) + (1-ud)*Kro[0];
+	auto kroud = ud*ca_kro(dados.Sg_W) + (1-ud)*Kro[0];
 	To[0] = 2*Go*(kroud/Bomed);
 	for(int i = 1; i < dados.nx; i++){
 		Bomed = (Bo[i-1] + Bo[i])/2;
@@ -272,35 +371,35 @@ void DerivadaPressaoCapilar(){
 void CalcularCgg(){
 	auto constante = dados.phi/dados.dt;
 	for(int i=0; i < dados.nx; i++){
-		Cgg[i]= constante*1/(calc_Bo(P[i])); // B do gas
+		Cgg[i]= constante*1/(calc_Bo(p[i])); // B do gas
 	}
 	
 }
 void CalcularCgp(){
 	auto constante = dados.phi/dados.dt;
 	for(int i=0; i < dados.nx; i++){
-		Cgp[i] = derivada_B_gas()*Sg[i];
+		Cgp[i] = derivada_B_gas(Bg[i],p[i])*Sg[i];
 	}
 }
 void CalcularCog(){
 	auto constante = - dados.phi/dados.dt;
 	for(int i=0; i < dados.nx; i++){
-		Cog[i] = constante*1/(calc_Bo(P[i])); // B do oleo
+		Cog[i] = constante*1/(calc_Bo(p[i])); // B do oleo
 	}
 }
 void CalcularCop(){
 	auto constante = dados.phi/dados.dt;
 	for(int i=0; i < dados.nx; i++){
-		Cop[i] = derivada_B_oleo()*(1-Sg[i]);
+		Cop[i] =derivada_B_oleo(Bo[i],p[i])*(1-Sg[i]);
 	}
 }
-void derivada_B_gas(){
+double derivada_B_gas(double b,double p){
 	//para implementar
-	
+	return  ((1/b)-(1/calc_Bg(p-10.0)))/(10.0);// analisar
 }
-void derivada_B_oleo(){
+double derivada_B_oleo(double b,double p){
 	//para implementar
-	
+	return 1;//((1/b)-(1/calc_Bo(p-10.0)))/(10.0); // analisar
 }
 
 //montar vetor de incogintas inicial com 2*nx	
@@ -310,12 +409,23 @@ void criarvx0 (){
 		X0[w+1]=dados.p_0;
 	}
 }
+void divx (std::vector<double>& X,std::vector<double>& A,std::vector<double>& B){
+	int k=0;
+	for (int w=0;w<=2*dados.nx;w=w+2){
+		A[k]=X[w];
+		B[k]=X[w+1];
+		k=k+1;
+	}
+
+}
+
 //matriz dos coeficientes
 void ccoef(){
 	// analizar que pode ter coef errados 
 	int m=2*dados.nx;
 	int n=2*dados.nx;
-	
+	//preencher vetores kr
+	rel_perm();
 	//Preencher os vetores: Tg, To, Cgg, Cgp, Cog, Cop, Pc
 	TransmissibilidadeGas(); //Tg
 	DerivadaPressaoCapilar(); //Pc
@@ -327,14 +437,14 @@ void ccoef(){
 
 	// Condiçoes de contorno esquerda
 	// saturação
-	coef[0][0]= 1; //Cgg[0]+Tg[0-1]*Pc[0-1]+Tg[0]Pc[0];
-	coef[0][1]= 1; //Tg[0]+Tg[0-1]+Cgp[0];
-	coef[0][2]= 1; // -(Tg[0-1]*Pc[0];
-	coef[0][3]= - Tg[0];
+	coef[0][0]=Cgg[0]+Tg[0-1]*Pc[0-1]+Tg[0]*Pc[0];
+	coef[0][1]=Tg[0]+Tg[0-1]+Cgp[0];
+	coef[0][2]= -Tg[0-1]*Pc[0];
+	coef[0][3]=- Tg[0];
 	// pressão
 	coef[1][0]= Cog[0];
-	coef[1][1]= 1; // To[0]+To[0-1]+Cop[0];
-	coef[1][3]= -To[0];
+	coef[1][1]=To[0]+To[0-1]+Cop[0];
+	coef[1][3]=-To[0];
 
 	for(int i=2; i<m-2; i=i+2){
 		//preenchimento saturação 
@@ -351,17 +461,17 @@ void ccoef(){
 		coef[i+1][j]=-To[k-1];
 		coef[i+1][j+1]= Cog[k];
 		coef[i+1][j+2]= To[k]+To[k-1]+Cop[k];
-		coef[i+1][j+4]= -To[k];
+		coef[i+1][j+4]=-To[k];
 	}
 	// saturação
-	coef[m-2][m-4] = -(Tg[nx-2]*Pc[nx-2];
-	coef[m-2][m-3] = -Tg[nx-2];
-	coef[m-2][m-2] = Cgg[nx-1]+Tg[nx-2]*Pc[nx-2]+Tg[nx-1]Pc[nx-1];
-	coef[m-2][m-1] = Tg[nx-1]+Tg[(nx-2]+Cgp[nx-1];
+	coef[m-2][m-4] = -Tg[n-2]*Pc[n-2];
+	coef[m-2][m-3] =-Tg[n-2];
+	coef[m-2][m-2] =Cgg[n-1]+Tg[n-2]*Pc[n-2]+Tg[n-1]*Pc[n-1];
+	coef[m-2][m-1] =Tg[n-1]+Tg[n-2]+Cgp[n-1];
 	// pressão
-	coef[m-1][m-3] = -To[nx-2];
-	coef[m-1][m-2] = Cog[nx-1]; 
-	coef[m-1][m-1] = To[nx-1]+To[nx-2]+Cop[nx-1];
+	coef[m-1][m-3] =-To[n-2];
+	coef[m-1][m-2] =Cog[n-1]; 
+	coef[m-1][m-1] =To[n-1]+To[n-2]+Cop[n-1];
 	
 }
 //vetor de termos constantes
@@ -376,6 +486,13 @@ void cvecD(){
 	D[m-2]=0; //Cgp[nx-1]*p_old[nx-1]+Cgg[nx-1]*Sg_old[nx-1]+Tg[nx-1]*P_D+ Tg[nx-2]*Pc[nx-2]*S_D;
 	D[m-1]= 0; //Cop[nx-1]*p_old[nx-1]+Cog[nx-1]*Sg_old[nx-1]+Cog[nx-1]*Sg_old[mx-1]+To[nx-1]*P_D;
 }
+void atualvec (Vec1D& x0, Vec1D& X){
+	auto w = X.size();
+	for (int i=0; i<w; i++){
+		x0[i]=X[i];
+	}
+}
+
 void fill_matrix(){
 	auto nx=dados.nx;
 	auto bg=dados.Bg;
@@ -462,9 +579,11 @@ bool is_diagonal_dom(const std::vector<std::vector<double>>& M){
 			sum = sum + std::fabs(M[i][j]);
 		}
 		if (sum > diag){
+			std::cout << "\n	 nao dominante \n\n\n";
 			return false;
 		}
 	}
+	std::cout << "\n\n VERDADEIRO \n\n";
 	return true;
 }
 
@@ -513,6 +632,9 @@ DadosTotais read_input_data(std::string filename){
 		dados_entrada.p_E=Dados[17];
 		dados_entrada.Sg_0=Dados[18];
 		dados_entrada.Sg_W=Dados[19];
+		dados_entrada.Alf=Dados[20];
+		dados_entrada.Z=Dados[21];
+		dados_entrada.T=Dados[22];
 	}
 	else{
 		std::cerr << "Nao foi possivel encontrar o arquivo " << filename;

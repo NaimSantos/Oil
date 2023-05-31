@@ -34,10 +34,14 @@ struct DadosTotais{
 	double muo {50};           // Viscosidade do oleo
 	double pref {50};          //
 	double Bg {50};            //
+	double Alf{2.0};
+	double Z{1.0};
+	double T{0.1};
+
 };
 
-	const int MAX_ITER = 50;
-	const double eps = 0.0001;
+const int MAX_ITER = 50;
+const double eps = 0.0001;
 //Define o tipo "Vec1D"
 using Vec1D = std::vector<double>;
 
@@ -67,6 +71,15 @@ void solver_s();
 void print_simulation_properties();
 void print_array_2D(const std::vector<Vec1D>& M);
 void print_vector(const Vec1D& M);
+// novas funções
+void divx (std::vector<double>& X,std::vector<double>& A,std::vector<double>& B);
+void atualvec (Vec1D& x0, Vec1D& X);
+double calc_Bg(double P);
+double ca_kro (double S);
+double ca_krg (double S);
+void gas_prop(Vec1D& B, const Vec1D& P);
+
+//
 
 void gauss_solver(std::vector<std::vector<double>>& A, std::vector<double>& B, std::vector<double>& X);
 bool is_diagonal_dom(const std::vector<std::vector<double>>& M);
@@ -81,8 +94,8 @@ void CalcularCgg();
 void CalcularCgp();
 void CalcularCog();
 void CalcularCop();
-void derivada_B_gas();
-void derivada_B_oleo();
+double derivada_B_gas(double b,double p);
+double derivada_B_oleo(double b,double p);
 
 
 DadosTotais read_input_data(std::string filename);

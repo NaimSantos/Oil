@@ -27,3 +27,6 @@ Pressao_esquerda:         25000
 Pressao_direita:          15000
 Sw_inicial:               0.20
 Sw_esquerda:              1.0
+Alfa:					  2.0
+Fator_Z:				  1.0
+Fator_T:				  0.1				
