@@ -17,18 +17,18 @@ struct DadosTotais{
 	double tempo_max {5000.0}; // Tempo máximo de simulação (dias)
 	double dt {0.5};           // tamanho do passo de tempo (dias)
 	double Lx {1000};          // Dimensão do reservatório (m)
-	int nx {6};                // número de células (adimensional)
+	int nx {10};                // número de células (adimensional)
 	double tolerancia {1e-8};  // tolerância
 	double dx {0.1};           // dimensão do discretização (m)
 	double p_0 {15000};        // pressão inicial (Pa)
 	double p_W {25000};        // pressão no contorno esquerdo (Pa)
 	double p_E {15000};        // pressão no contorno direito (Pa)
 	double Sg_0 {0.2};         // Saturação inicial (adimensional)
-	double Sg_W {1.0};         // Saturação no contorno esquerdo (adimensional)
-	double phi {0.20};         // porosidade da rocha (adimensional)
+	double Sg_W {0.95};         // Saturação no contorno esquerdo (adimensional)
+	double phi {0.50};         // porosidade da rocha (adimensional)
 	double k {0.030};          // permeabilidade da rocha (unidade)
 	double siw {0.15};         // saturação irredutivel agua
-	double sor {0.10};         // saturação irredutivel oleo
+	double sor {0.05};         // saturação irredutivel oleo
 	double rhowsc {1000.0};    // massa específica (kg/m^3)
 	double rhow {990};         // massa específica (kg/m^3)
 	double mug {1000.0};       // viscosidade da agua
@@ -37,15 +37,17 @@ struct DadosTotais{
 	double muo {50};           // Viscosidade do oleo
 	double pref {50};          //
 	double Bg {50};            //
-	double Alf{2.0};
+	double Alf{4.17};
 	double Z{1.0};
-	double T{0.1};
+	double T{10.0};
+	double temat {0.0};
 
 };
 // Constantes do processo iterativo do Guass Siedel
 const int MAX_ITER = 50;
 const double eps = 0.0001;
 
+void rel_perm();
 
 void update(Vec1D& V0, const Vec1D& V);
 double evaluate_dB(double bo, double bo0, double P, double P0);
@@ -68,7 +70,7 @@ void cvecD();
 void funcionamento();
 void TransmissibilidadeGas();
 void TransmissibilidadeOleo();
-void DerivadaPressaoCapilar();
+double DerivadaPressaoCapilar(double p, double S);
 void CalcularCgg();
 void CalcularCgp();
 void CalcularCog();
@@ -76,8 +78,10 @@ void CalcularCop();
 double derivada_B_gas(double b,double p);
 double derivada_B_oleo(double b,double p);
 //area para novas funçoes:
-
-
+void mmll(std::vector<Vec1D>& A,Vec1D& B, double i);
+void vetpc(Vec1D& P,const Vec1D& S);
+void vecdPc ();
+bool Sassenfeld(const std::vector<Vec1D>& M);
 
 //funcoes utilitarias:
 void resize_if_needed(int n);
@@ -124,7 +128,7 @@ double get_elapsed_time(SteadyTimePoint ti, SteadyTimePoint tf){
 //void abs_diff(Vec1D& dif, const Vec1D& V, double *V0);
 //double max_vetor(Vec1D& V);
 //void acumulo();
-//void rel_perm();
+//
 //double calc_kro(double Sg); // Modelo de Corey para permeabilidade relativa óleo/água
 //double calc_krg(double Sg);
 //void Transmissibilidade();

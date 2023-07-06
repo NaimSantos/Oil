@@ -23,12 +23,21 @@ Vec1D Bo(dados.nx, 0.0);
 Vec1D Bo_old(dados.nx, 0.0);
 Vec1D Bg(dados.nx, 0.0);
 Vec1D Bg_old(dados.nx, 0.0);
-Vec1D To(dados.nx+1, 0.0);               // Transmissibilidade
+Vec1D To(dados.nx, 0.0);               // Transmissibilidade
 Vec1D Tg(dados.nx+1, 0.0);               // Transmissibilidade
 Vec1D Pc(dados.nx+1,0.0);
 Vec1D X0(2*dados.nx,0.0);
 Vec1D X(2*dados.nx,0.0);
+Vec1D dPc(dados.nx,0.0);
+Vec1D dBo(dados.nx,0.0);
+Vec1D soma(2*dados.nx,0.0);
+Vec1D beta(2*dados.nx,0.0);
+Vec1D diagonal(2*dados.nx,0.0);
+Vec1D diferenca(2*dados.nx,0.0);
+Vec1D Pc_old(dados.nx+1,0.0);
 std::vector<Vec1D> coef(2*dados.nx, Vec1D(2*dados.nx, 0.0));
+std::vector<Vec1D> tnot(dados.nx+1, Vec1D(dados.tempo_max/100, 0.0));
+
 
 int main(int argc, char *argv[] ){
 	std::cout << "Inicio da simulacao..." << std::endl;
@@ -37,10 +46,11 @@ int main(int argc, char *argv[] ){
 	//Leitura das váriaveis a partir de um arquivo de entrada:
 	dados=read_input_data("input_data.txt");
 	int n=dados.nx; //numero de celulas, lido do arquivo de entrada
-
+double bot;
+double maior;
 	resize_if_needed(dados.nx);
 	dados.Bg = dados.rhowsc/dados.rhow;
-	dados.dx = dados.Lx/n;
+	dados.dx = dados.Lx/n;// alterado0.1;
 	dados.pref = dados.p_0;
 
 	//Exibição das informações do problema:
@@ -50,7 +60,7 @@ int main(int argc, char *argv[] ){
 	gas_prop(Bg_old,p);
 	update(Bo, Bo_old);
 	update(Bg, Bg_old);
-	std::cout << "\nANTES do preenchimento: " << std::endl;
+	/*std::cout << "\nANTES do preenchimento: " << std::endl;
 	print_array_2D(coef);
 	std::cout << "\nVetor Tg \n ";
 	print_vector(Tg);
@@ -59,17 +69,30 @@ int main(int argc, char *argv[] ){
 	criarvx0 ();
 	ccoef();
 	std::cout << "Teste diagonal dominante:" << is_diagonal_dom(coef) << std::endl;
-	is_diagonal_dom(coef);
+	//is_diagonal_dom(coef);
+	Sassenfeld(coef);
 	std::cout << "\nDEPOIS do preenchimento: " << std::endl;
 	print_array_2D(coef);
-	std::cout << "\nVetor Tg:" << std::endl;
-	print_vector(Tg);
-	std::cout << "\nVetor To:" << std::endl;
-	print_vector(To);
-	std::cout << "\nVetor Bo_old:" << std::endl;
-	print_vector(Bo_old);
-	std::cout << "\nVetor Bg:" << std::endl;
-	print_vector(Bg);
+	std::cout << "\nVetor Cop:" << std::endl;
+	print_vector(Cop);
+	std::cout << "\nVetor Cog:" << std::endl;
+	print_vector(Cog);
+	std::cout << "\nVetor dBo:" << std::endl;
+	print_vector(dBo);
+	std::cout << "\nVetor beta:" << std::endl;
+	print_vector(beta);	
+	std::cout << "\nVetor diagonal:" << std::endl;
+	print_vector(diagonal);
+	std::cout << "\nVetor diferenca:" << std::endl;
+	print_vector(diferenca);
+		std::cout << "\nmaior:" << std::endl;
+	std::cout << maior << ' ' ;*/
+	//	std::cout << "\n botmenos" << std::endl;
+	//std::cout << botmenos << ' ' ;
+
+	//std::cout << "\nVetor Bo:" << std::endl;
+	//print_vector(Bo);
+	
 	std::cout << "Antes da funcao funcionamento..." << std::endl;
 	std::cout << "\nVetor X0:" << std::endl;
 	print_vector(X0);
@@ -79,8 +102,39 @@ int main(int argc, char *argv[] ){
 	funcionamento();
 	std::cout << "\nVetor X0:" << std::endl;
 	print_vector(X0);
+	std::cout << "\n DEPOIS DO FUNCIONAMENTO: " << std::endl;
+	print_array_2D(coef);
+	std::cout << "\nVetor Tg \n ";
+	print_vector(Tg);
+	std::cout << "\nVetor To \n ";
+	print_vector(To);
+	std::cout << "\nVetor Krg \n ";
+	print_vector(Krg);	
 	std::cout << "\nVetor Sg:" << std::endl;
+	print_vector(Sg);	
+		std::cout << "\nVetor D:" << std::endl;
+	print_vector(D);
+/*	std::cout << "\nVetor kro:" << std::endl;
+	print_vector(Kro);
+	std::cout << "\nVetor krg:" << std::endl;
+	print_vector(Krg);
+*/	
+	
+	/*std::cout << "\nVetor Sg:" << std::endl;
 	print_vector(Sg);
+	std::cout << "\nVetor Pc_old:" << std::endl;
+	print_vector(Pc_old);
+	std::cout << "\nVetor Cgg:" << std::endl;
+	print_vector(Cgg);
+	std::cout << "\nVetor Bo_old:" << std::endl;
+	print_vector(Bo_old);*/
+	std::cout << "\nVetor Bg:" << std::endl;
+	print_vector(Bg);
+	
+	//std::cout << "\nMatriz To" << std::endl;
+	//print_array_2D(tnot);
+	std::cout << "Tempo : " << dados.temat << " \n";
+	
 	/*
 	std::cout << "teste de funcionamento...";
 	funcionamento();
@@ -91,13 +145,13 @@ int main(int argc, char *argv[] ){
 	*/
 
 	//Salva os dados:
-	//save_full_data(p,"Pressao");
-	//save_full_data(Sg,"Saturacao");
+	save_full_data(p,"Pressao");
+	save_full_data(Sg,"Saturacao");
 	std::cout << "\nFim da simulacao" << std::endl;
 	return 0;
 }
 
-void update(Vec1D& V0, const Vec1D& V){
+void update(Vec1D& V0, const Vec1D& V){// vetor q sera atualizado - vetor com valores
 	const auto n = V0.size();
 	for(int i = 0; i < n; i++){
 		V0[i] = V[i];
@@ -124,12 +178,7 @@ double calc_Bo(const double P){
 	return dados.Boref/( 1.0 + dados.co*(P - dados.pref));
 }
 
-void rel_perm(){// adaptação
-	for(int i = 0; i < dados.nx; i++){
-		Kro[i] = ca_kro(Sg[i]);
-		Krg[i] = ca_krg(Sg[i]);
-	}
-}
+
 
 double dB(double bo, double bo0, double P, double P0){
 	double ret {0.0};
@@ -154,36 +203,122 @@ void funcionamento(){
 		obtem novas estimativa para pressao/saturação
 	*/
 	// Calculo do fator volume formação 
+	
 	oil_prop(Bo_old,p);
 	gas_prop(Bg_old,p);
 	update(Bo, Bo_old);
 	update(Bg, Bg_old);
+	vetpc(Pc_old,Sg);
+	update(Pc,Pc_old);
+	
 	criarvx0 ();
+	std::cout << "\nVetor X0:" << std::endl;
+	print_vector(X0);
+	X0[0]=1.0;
+	X0[1]=25000.0;
 	// preencher a matriz de coeficientes
+	std::cout << "\nVetor X0:" << std::endl;
+	print_vector(X0);
+	int c=1;
 	ccoef();
+	std::cout << "Teste diagonal dominante:" << is_diagonal_dom(coef) << std::endl;
+	Sassenfeld(coef);
 	// preencher a matriz de termos independentes // usar matrz ou vetor?
 	cvecD();
+	std::cout << "\npreenchimento da matriz antes do metodo:" << std::endl;
+	print_array_2D(coef);
+		std::cout << "\nVetor Tg \n ";
+	print_vector(Tg);	std::cout << "\nVetor Bg \n ";
+	print_vector(Bg);
+	std::cout << "\nVetor To \n ";
+	print_vector(To);
+	std::cout << "\nVetor Krg \n ";
+	print_vector(Krg);	
+		std::cout << "\nVetor :X0" << std::endl;
+	print_vector(X0);
+	std::cout << "\nVetor Sg:" << std::endl;
+	print_vector(Sg);	
+	std::cout << "\nVetor p:" << std::endl;
+	print_vector(p);
+		std::cout << "\nVetor D:" << std::endl;
+	print_vector(D);
+	std::cout << "\n fin dos dados antes do metodo \n\n" << std::endl;
+	//
 	// invocar o Gauss-Siedel, utilizando as pressao/saturação inicial como estimativa
 	gauss_solver(coef,D,X0);
-	divx (X,Sg,p);
+	divx (X0,Sg,p);
+	
 	// obtem novas estimativa para pressao/saturação
-	atualvec(p_old,p);
-	atualvec(Sg_old,Sg);
-	atualvec(Bo_old,Bo);
-	atualvec(Bg_old,Bg);
+	update(p_old,p);
+	update(Sg_old,Sg);
+	update(Bo_old,Bo);
+	update(Bg_old,Bg);
 	// while (tempo_atual < tempo_max)
+			std::cout << "\nVetor Tg \n ";
+	print_vector(Tg);
+	std::cout << "\nVetor To \n ";
+	print_vector(To);
+	std::cout << "\nVetor Krg \n ";
+	print_vector(Krg);	
+		std::cout << "\nVetor :X0" << std::endl;
+	print_vector(X0);
+	std::cout << "\nVetor Sg:" << std::endl;
+	print_vector(Sg);	
+	std::cout << "\nVetor p:" << std::endl;
+	print_vector(p);
+		std::cout << "\nVetor D:" << std::endl;
+	print_vector(D);
+		std::cout << "\nVetor X0:" << std::endl;
+	print_vector(X0);
+
+	print_array_2D(coef);
+	std::cout << "Tempo : " << dados.temat << " \n";
 	double temat {0.0};
-	while (temat < dados.tempo_max){
+	//dados.tempo_max
+	while (temat < 7.0){
+		oil_prop(Bo_old,p);
+		gas_prop(Bg_old,p);
+		update(Bo, Bo_old);
+		update(Bg, Bg_old);
 		ccoef();
+		std::cout << "Teste diagonal dominante:" << is_diagonal_dom(coef) << std::endl;
+	std::cout << "Teste Sassenfeld:" << Sassenfeld(coef) << std::endl;
+	
 		cvecD();
 		gauss_solver(coef,D,X0); 
-		divx (X,Sg,p);
-		atualvec(p_old,p);
-		atualvec(Sg_old,Sg);
-		atualvec(Bo_old,Bo);
-		atualvec(Bg_old,Bg);
+		divx (X0,Sg,p);
+		update(p_old,p);
+		update(Sg_old,Sg);
+		update(Bo_old,Bo);
+		update(Bg_old,Bg);
+		/*int re=c%10;
+		if (c<50){
+		mmll(tnot,To,c);// cada coluna um tempo
+		}
+		c=c+1;*/
 		temat=temat+dados.dt;
+		dados.temat=temat;
+		std::cout << "\nVetor Tg \n ";
+	print_vector(Tg);
+	std::cout << "\nVetor To \n ";
+	print_vector(To);
+	std::cout << "\nVetor Krg \n ";
+	print_vector(Krg);	
+		std::cout << "\nVetor :X0" << std::endl;
+	print_vector(X0);
+	std::cout << "\nVetor Sg:" << std::endl;
+	print_vector(Sg);	
+	std::cout << "\nVetor p:" << std::endl;
+	print_vector(p);
+		std::cout << "\nVetor D:" << std::endl;
+	print_vector(D);
+		std::cout << "\nVetor X0:" << std::endl;
+	print_vector(X0);
+	print_array_2D(coef);
+	std::cout << "Tempo : " << dados.temat << " \n";
+	
 	}
+
 }
 
 int upwind(double pesq, double pdir){
@@ -197,11 +332,19 @@ double ca_kro (double S){
 }
 
 double ca_krg (double S){
-	double frac=((1.0 - S) - dados.sor)/(1.0 - dados.sor);
-	double frac2=(1.0-1.0-S)/(1.0-dados.sor);
+	double frac=(1.0 - S - dados.sor)/(1.0 - dados.sor);
+	double frac2=(S)/(1.0-dados.sor);
 	double exp=(2.0 + dados.Alf)/dados.Alf;
 	return std::pow(frac2,2)*(1-std::pow(frac,exp));
 }
+void rel_perm(){// adaptação
+	for(int i = 0; i < dados.nx; i++){
+		Kro[i] = ca_kro(Sg[i]);
+		Krg[i] = ca_krg(Sg[i]);
+	}
+}
+
+
 
 double calc_Bg(double P){
 	return 0.0282*((dados.T*dados.Z)/P);
@@ -214,58 +357,76 @@ void gas_prop(Vec1D& B, const Vec1D& P){
 }
 
 void TransmissibilidadeGas(){
-	double conv =8.64E-2;
+	double conv =8.64E-2;//mudei de 2 para 5
 	const auto Gg = (conv*dados.k)/(dados.muo*dados.dx*dados.dx);
 	auto Bg_med = calc_Bg(dados.p_W);// ver quais seriam esses fatores
 	auto ud = upwind(dados.p_W, p[0]);
-	auto krgud = ud*ca_krg(dados.Sg_W) + (1-ud)*Krg[0];
-	Tg[0] = 2*Gg*(krgud/Bg_med);
+	auto krgud =Krg[0];//ud*ca_krg(dados.Sg_W) + (1-ud)*Krg[0];
+	Tg[0] =Gg*(krgud/Bg_med); // tirei o 2
 	for(int i = 1; i < dados.nx; i++){
 		Bg_med = (Bg[i-1] + Bg[i])/2;
 		ud    = upwind(p[i-1],p[i]);
 		krgud = ud*Krg[i-1] + (1-ud)*Krg[i];
 		Tg[i] = Gg*(krgud/Bg_med);
 	}
-	Bg_med = calc_Bg(dados.p_E);// ver quais seriam esses fatores
+	Bg_med = calc_Bg(dados.p_E);//direita 
 	krgud = Krg[dados.nx-1];
-	Tg[dados.nx] = 2*Gg*(krgud/Bg_med);
+	Tg[dados.nx] = Gg*(krgud/Bg_med);//tirei o 2
 }
 
 void TransmissibilidadeOleo(){
-	double conv = 8.64E-2;
+
+	double conv =8.64E-2;
 	const auto Go = (conv*dados.k)/(dados.muo*dados.dx*dados.dx);
 	auto Bomed = calc_Bo(dados.p_W);
 	auto ud = upwind(dados.p_W, p[0]);
-	auto kroud = ud*ca_kro(dados.Sg_W) + (1-ud)*Kro[0];
-	To[0] = 2*Go*(kroud/Bomed);
+	auto kroud =Kro[0];// ud*ca_kro(dados.Sg_W) + (1-ud)*Kro[0];
+	To[0] =Go*(kroud/Bomed);// tirei o 2
 	for(int i = 1; i < dados.nx; i++){
 		Bomed = (Bo[i-1] + Bo[i])/2;
 		ud    = upwind(p[i-1],p[i]);
 		kroud = ud*Kro[i-1] + (1-ud)*Kro[i];
 		To[i] = Go*(kroud/Bomed);
 	}
-	Bomed = calc_Bo(dados.p_E);// ver quais seriam esses fatores
+	Bomed = calc_Bo(dados.p_E);
 	kroud = Kro[dados.nx-1];
-	To[dados.nx] = 2*Go*(kroud/Bomed);
+	To[dados.nx] =Go*(kroud/Bomed);// tirei o 2
 }
 
-void DerivadaPressaoCapilar(){
-	//para implementar
-	
+double DerivadaPressaoCapilar(double p, double S){
+	//
+double ret {0.0};
+/*ret=((1/p)-(1/CalcularPcgo(S-0.4)))/(0.4); // -0,630
+if (ret<dados.tolerancia)
+	ret=0.0;
+else 
+	ret =ret;
+*/
+return ((1/p)-(1/CalcularPcgo(S-0.05)))/(0.05);
 }
 
 //Pressao capilar
-double CalcularPcgo(double Sg){
+double CalcularPcgo(double Sg){//alteradoooo
 	double Pct = 1.0; // uma constante
-	double Sorg = 0.2; // a saturação residual de óleo no sistema óleo-gás
+	double Sorg = dados.sor;//0.0;//0.2; // a saturação residual de óleo no sistema óleo-gás
 	double lambda = 2.0; // outra constante
 	return Pct*(std::pow(((1.0-Sorg)/((1.0-Sg)-Sorg)),(1.0/lambda)));
+}
+void vetpc(Vec1D& p,const Vec1D& S){
+	for (int i=0;i<dados.nx;i++){
+		p[i]= CalcularPcgo(S[i]);//-0.4);
+	}
+}
+void vecdPc (){
+	for(int i=0;i<dados.nx;i++){
+		dPc[i]=DerivadaPressaoCapilar(Pc[i],Sg[i]);//*100.0;
+	}
 }
 
 void CalcularCgg(){
 	auto constante = dados.phi/dados.dt;
 	for(int i=0; i < dados.nx; i++){
-		Cgg[i]= constante*1/(calc_Bo(p[i])); // B do gas
+		Cgg[i]= constante/(calc_Bg(p[i])); // B do gas 
 	}
 	
 }
@@ -273,31 +434,42 @@ void CalcularCgg(){
 void CalcularCgp(){
 	auto constante = dados.phi/dados.dt;
 	for(int i=0; i < dados.nx; i++){
-		Cgp[i] = derivada_B_gas(Bg[i],p[i])*Sg[i];
+		Cgp[i] = constante*derivada_B_gas(Bg[i],p[i])*Sg[i];//10e-5* alteração para se daig dominante
 	}
 }
 
 void CalcularCog(){
 	auto constante = - dados.phi/dados.dt;
 	for(int i=0; i < dados.nx; i++){
-		Cog[i] = constante*1/(calc_Bo(p[i])); // B do oleo
+		Cog[i] = constante/(calc_Bo(p[i])); // B do oleo
 	}
 }
 void CalcularCop(){
 	auto constante = dados.phi/dados.dt;
 	for(int i=0; i < dados.nx; i++){
-		Cop[i] =derivada_B_oleo(Bo[i],p[i])*(1-Sg[i]);
-	}
+		dBo[i]=1/calc_Bo(p[i]);//derivada_B_oleo(Bo[i],p[i]);// 
+
+		Cop[i] =constante*dBo[i]*(1.0-Sg[i]);// 10e6* alteração p diag domn
+	}		
 }
 
 double derivada_B_gas(double b, double p){
-	//para implementar
+	//para implementar	
 	return  ((1/b)-(1/calc_Bg(p-10.0)))/(10.0);// analisar
 }
 
 double derivada_B_oleo(double b, double p){
 	//para implementar
-	return 1;//((1/b)-(1/calc_Bo(p-10.0)))/(10.0); // analisar
+	double ret;
+	double cte = 1.5;
+	ret=(b-calc_Bo(p-cte))/cte;//((1/calc_Bo(p+cte))-(1/b))/cte;//((1/b)-(1/calc_Bo(p-cte)))/(cte);//-1/(calc_Bo(p)*calc_Bo(p));//(b-calc_Bo(p-10.0))/10.0;//calc_Bo(p-cte);//
+	double bot=b;
+	double botmenos=calc_Bo(p-cte);
+/*if (ret<dados.tolerancia)
+	ret=0.0;
+*/
+	return ret;//((1/b)-(1/calc_Bo(p-10.0)))/(10.0); // analisar
+	
 }
 
 //montar vetor de incogintas inicial com 2*nx
@@ -323,68 +495,73 @@ void ccoef(){
 	// analizar que pode ter coef errados 
 	int m=2*dados.nx;
 	int n=2*dados.nx;
+	double c;
 	//preencher vetores kr
 	rel_perm();
 	//Preencher os vetores: Tg, To, Cgg, Cgp, Cog, Cop, Pc
 	TransmissibilidadeGas(); //Tg
-	DerivadaPressaoCapilar(); //Pc
+	vetpc(Pc_old,Sg);
+	update(Pc,Pc_old);
+	vecdPc ();//dPc
 	CalcularCgg(); //Cgg
 	CalcularCgp(); //Cgp
 	TransmissibilidadeOleo(); //To
 	CalcularCog(); //Cog
 	CalcularCop(); //Cop
+	//mmll(tnot,Tg,c);
 
 	// Condiçoes de contorno na esquerda (linhas 0 e 1 da matrix de coeficientes)
 	// saturação
-	coef[0][0]=Cgg[0]+Tg[0-1]*Pc[0-1]+Tg[0]*Pc[0];
-	coef[0][1]=Tg[0]+Tg[0-1]+Cgp[0];
-	coef[0][2]= -Tg[0-1]*Pc[0];
+	coef[0][0]=Cgg[0]+Tg[0]*dPc[0]+Tg[0]*dPc[0];//Cgg[0]+Tg[0-1]*Pc[0-1]+Tg[0]*Pc[0];
+	coef[0][1]=Tg[0]+Tg[0]+Cgp[0];//Tg[0]+Tg[0-1]+Cgp[0];
+	coef[0][2]= -Tg[0]*dPc[0];//-Tg[0-1]*Pc[0];
 	coef[0][3]=- Tg[0];
 	// pressão
 	coef[1][0]= Cog[0];
-	coef[1][1]=To[0]+To[0-1]+Cop[0];
+	coef[1][1]=To[0]+To[0]+Cop[0];//To[0]+To[0-1]+Cop[0];
 	coef[1][3]=-To[0];
 
 	for(int i=2; i<m-2; i=i+2){
 		//preenchimento saturação 
 		int k = i/2; //os vetores têm nx de tamanho, mas a matriz tem 2nx
 		int j = i-2;
-		coef[i][j]= - (Tg[k-1]*Pc[k-1]);
+		coef[i][j]= - (Tg[k-1]*dPc[k-1]);//anula
 		coef[i][j+1]= -Tg[k-1];
-		coef[i][j+2]= Cgg[k]+Tg[k-1]*Pc[k-1]+Tg[k]*Pc[k];
+		coef[i][j+2]= Cgg[k]+Tg[k-1]*dPc[k-1]+Tg[k]*dPc[k];// diagonal princ
 		coef[i][j+3]= Tg[k]+Tg[k-1]+Cgp[k];
-		coef[i][j+4]= -(Tg[k-1]*Pc[k]);
+		coef[i][j+4]= -(Tg[k]*dPc[k]);//anula
 		coef[i][j+5]= - Tg[k];
 		// pressão
 		j=i-1;
-		coef[i+1][j]=-To[k-1];
+		coef[i+1][j]=-To[k-1]; //anula
 		coef[i+1][j+1]= Cog[k];
-		coef[i+1][j+2]= To[k]+To[k-1]+Cop[k];
-		coef[i+1][j+4]=-To[k];
+		coef[i+1][j+2]= To[k]+To[k-1]+Cop[k];// diagonal princ
+		coef[i+1][j+4]=-To[k];//anula
 	}
 	// saturação
-	coef[m-2][m-4] = -Tg[n-2]*Pc[n-2];
-	coef[m-2][m-3] =-Tg[n-2];
-	coef[m-2][m-2] =Cgg[n-1]+Tg[n-2]*Pc[n-2]+Tg[n-1]*Pc[n-1];
-	coef[m-2][m-1] =Tg[n-1]+Tg[n-2]+Cgp[n-1];
+	coef[m-2][m-4] = -Tg[dados.nx-2]*dPc[dados.nx-2];
+	coef[m-2][m-3] =-Tg[dados.nx-2];
+	coef[m-2][m-2] =Cgg[dados.nx-1]+Tg[dados.nx-2]*dPc[dados.nx-2]+Tg[dados.nx-1]*dPc[dados.nx-1];
+	coef[m-2][m-1] =Tg[dados.nx-1]+Tg[dados.nx-2]+Cgp[dados.nx-1];
 	// pressão
-	coef[m-1][m-3] =-To[n-2];
-	coef[m-1][m-2] =Cog[n-1]; 
-	coef[m-1][m-1] =To[n-1]+To[n-2]+Cop[n-1];
+	coef[m-1][m-3] =-To[dados.nx-2];
+	coef[m-1][m-2] =Cog[dados.nx-1]; 
+	coef[m-1][m-1] =To[dados.nx-1]+To[dados.nx-2]+Cop[dados.nx-1];
 	
 }
 
 // Vetor de termos constantes
 void cvecD(){
 	int m=2*dados.nx;
-	D[0]= 0; // Cgp[0]*p_old[0]+Cgg[0]*Sg_old[0] Tg[0-1]*P_E+ td[0-1]*Pc[0-1]*S_E;
-	D[1]= 0; // Cop[0]*p_old[0]+Cog[0]*Sg_old[0]+To[0-1]*P_E;
+	D[0]= Cgp[0]*p_old[0]+Cgg[0]*Sg_old[0]+Tg[0]*dados.p_W+ Tg[0]*dPc[0]*dados.Sg_W;//Cgp[0]*p_old[0]+Cgg[0]*Sg_old[0] Tg[0-1]*P_E+ td[0-1]*Pc[0-1]*S_E;
+	D[1]= Cop[0]*p_old[0]+Cog[0]*Sg_old[0]+To[0]*dados.p_W; // Cop[0]*p_old[0]+Cog[0]*Sg_old[0]+To[0-1]*P_E;
 	for (int i=2;i<m-2;i=i+2){
-		D[i]=Cgp[i/2]*p_old[i/2]+Cgg[i/2]*Sg_old[i/2];
-		D[i+1]=Cop[i/2]*p_old[i/2]+Cog[i/2]*Sg_old[i/2];
+		int k=i/2;
+		D[i]=Cgp[k]*p_old[k]+Cgg[k]*Sg_old[k];
+		D[i+1]=Cop[k]*p_old[k]+Cog[k]*Sg_old[k];
 	}
-	D[m-2]=0; //Cgp[nx-1]*p_old[nx-1]+Cgg[nx-1]*Sg_old[nx-1]+Tg[nx-1]*P_D+ Tg[nx-2]*Pc[nx-2]*S_D;
-	D[m-1]= 0; //Cop[nx-1]*p_old[nx-1]+Cog[nx-1]*Sg_old[nx-1]+Cog[nx-1]*Sg_old[mx-1]+To[nx-1]*P_D;
+	D[m-2]=Cgp[dados.nx-1]*p_old[dados.nx-1]+Cgg[dados.nx-1]*Sg_old[dados.nx-1]+Tg[dados.nx-1]*dados.p_E+ Tg[dados.nx-2]*dPc[dados.nx-2]*dados.Sg_0;
+	D[m-1]= Cop[dados.nx-1]*p_old[dados.nx-1]+Cog[dados.nx-1]*Sg_old[dados.nx-1]+Cog[dados.nx-1]*Sg_old[dados.nx-1]+To[dados.nx-1]*dados.p_E;
 }
 
 void atualvec(Vec1D& x0, Vec1D& X){
@@ -422,6 +599,7 @@ void gauss_solver(std::vector<Vec1D>& A, Vec1D& B, Vec1D& X){
 		counter++;
 		//std::cout << '\n';
 	}
+	divx (X,Sg, p);
 }
 
 bool is_diagonal_dom(const std::vector<Vec1D>& M){
@@ -430,13 +608,17 @@ bool is_diagonal_dom(const std::vector<Vec1D>& M){
 		std::cout << "A matriz teste nao e quadrada" << std::endl;
 
 	for (int i=0; i < m; i++){
-		double diag = M[i][i];
+		double diag = std::fabs(M[i][i]);
+		diagonal[i]=std::fabs(diag);
 		double sum = 0.0;
 		for (int j = 0; j < n; j++){
 			if (i==j)
 				continue;
 			sum = sum + std::fabs(M[i][j]);
+			
 		}
+		soma[i]=sum;
+		diferenca[i]=diagonal[i]-soma[i];
 		if (sum > diag){
 			std::cout << "A matriz nao e estritamente diagonal dominante" << std::endl;
 			return false;
@@ -444,6 +626,48 @@ bool is_diagonal_dom(const std::vector<Vec1D>& M){
 	}
 	std::cout << "A matriz e estritamente diagonal dominante";
 	return true;
+}
+
+bool Sassenfeld(const std::vector<Vec1D>& M){
+	auto m=M[0].size(); auto n=M.size();
+	if (m != n)
+		std::cout << "A matriz teste nao e quadrada" << std::endl;
+	for (int i=0;i<m;i++){
+		beta[i]=1;
+	}
+	int i=0;
+	double diag = std::fabs(M[i][i]);
+	double sum = 0.0;
+	for (int j = 0; j < n; j++){
+			if (i==j)
+				continue;
+			sum = sum + std::fabs(M[i][j]/M[i][i]);
+			
+		}
+	beta[i]=sum;
+	for (int i=1; i < m; i++){
+		double diag = std::fabs(M[i][i]);
+		double sum = 0.0;
+		
+	for (int j = 0; j < n; j++){
+			if (i==j)
+				continue;
+			sum = sum + std::fabs(M[i][j]/diag)*beta[j];
+			
+		}
+	beta[i]=sum;
+	}
+	double maior;
+	maior =beta[0];
+	for (int i=1;i<m;i++){
+		if(beta[i]>maior)
+			maior =soma[i];
+	}
+	if (maior<1)
+		std::cout << "\n \n gaus converge\n ";
+	else std::cout << "\n gaus NAO converge\n ";
+	return true;
+		
 }
 
 DadosTotais read_input_data(std::string filename){
@@ -485,12 +709,12 @@ DadosTotais read_input_data(std::string filename){
 		dados_entrada.Lx=Dados[12];
 		dados_entrada.nx=static_cast<int>(Dados[13]);
 		dados_entrada.tolerancia=Dados[14];
-		dados_entrada.p_0=Dados[15];
-		dados_entrada.p_W=Dados[16];
-		dados_entrada.p_E=Dados[17];
-		dados_entrada.Sg_0=Dados[18];
-		dados_entrada.Sg_W=Dados[19];
-		dados_entrada.Alf=Dados[20];
+		dados_entrada.p_0=Dados[15];//inicail
+		dados_entrada.p_W=Dados[16];//esquerda
+		dados_entrada.p_E=Dados[17];//direita
+		dados_entrada.Sg_0=Dados[18];//inicial
+		dados_entrada.Sg_W=Dados[19];//esquerda
+		dados_entrada.Alf=Dados[20];//
 		dados_entrada.Z=Dados[21];
 		dados_entrada.T=Dados[22];
 	}
@@ -572,6 +796,14 @@ void print_simulation_properties(){
 	std::cout << "Pressao no contorno direito: " << dados.p_E << "\n";
 	std::cout << "Saturacao inicial: " << dados.Sg_0 << "\n";
 	std::cout << "Saturacao no contorno esquerdo: " << dados.Sg_W << "\n";
+}
+///montar matriz linha por linha
+void mmll(std::vector<Vec1D>& A, Vec1D& B, double i){
+	auto m = B.size(); // 
+	A[0][i]=i;
+	for(int j= 1; j < m; j++){
+	A[j][i]=B[j-1];
+	}
 }
 
 //Funções utilitarias:
