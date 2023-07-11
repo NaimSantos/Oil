@@ -24,7 +24,7 @@ struct DadosTotais{
 	double p_W {25000};        // pressão no contorno esquerdo (Pa)
 	double p_E {15000};        // pressão no contorno direito (Pa)
 	double Sg_0 {0.2};         // Saturação inicial (adimensional)
-	double Sg_W {0.95};         // Saturação no contorno esquerdo (adimensional)
+	double Sg_W {0.95};        // Saturação no contorno esquerdo (adimensional)
 	double phi {0.50};         // porosidade da rocha (adimensional)
 	double k {0.030};          // permeabilidade da rocha (unidade)
 	double siw {0.15};         // saturação irredutivel agua
@@ -40,7 +40,6 @@ struct DadosTotais{
 	double Alf{4.17};
 	double Z{1.0};
 	double T{10.0};
-	double temat {0.0};
 
 };
 // Constantes do processo iterativo do Guass Siedel
@@ -48,7 +47,8 @@ const int MAX_ITER = 50;
 const double eps = 0.0001;
 
 void rel_perm();
-
+void initial_conf();
+void update_old_new();
 void update(Vec1D& V0, const Vec1D& V);
 double evaluate_dB(double bo, double bo0, double P, double P0);
 void oil_prop(Vec1D& B, const Vec1D& P);
@@ -65,8 +65,8 @@ void gas_prop(Vec1D& B, const Vec1D& P);
 void gauss_solver(std::vector<Vec1D>& A, Vec1D& B, Vec1D& X);
 bool is_diagonal_dom(const std::vector<Vec1D>& M);
 void criarvx0();
-void ccoef();
-void cvecD();
+void preencher_coef();
+void preencher_indep();
 void funcionamento();
 void TransmissibilidadeGas();
 void TransmissibilidadeOleo();
@@ -83,6 +83,8 @@ void vetpc(Vec1D& P,const Vec1D& S);
 void vecdPc ();
 bool Sassenfeld(const std::vector<Vec1D>& M);
 
+
+void exemplo_gauss();
 //funcoes utilitarias:
 void resize_if_needed(int n);
 void save_full_data(const Vec1D& X, std::string variavel);

@@ -15,10 +15,10 @@ Compressibilidade:        1.05E-6
 Viscosidade:              2
 
 Dados_de_simulacao:
-Tempo_de_simulacao:       5000
+Tempo_de_simulacao:       10
 Passo_de_tempo_dt:        0.5
 Comprimento_Lx:           1000
-Numero_de_cels_nx:        6
+Numero_de_cels_nx:        6 
 tolerancia_tol:           1E-8
 
 Condições_iniciais_contorno:
